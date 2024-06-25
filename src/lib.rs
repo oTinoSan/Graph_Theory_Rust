@@ -1,10 +1,12 @@
 use array2d::Array2D;
 use std::fs;
 
+pub mod shiloach_vishkin;
+
 #[derive(Debug, Clone)]
 pub struct CompressedSparseRows {
-    rof_offsets: Vec<u64>,
-    col_indices: Vec<u64>,
+    pub rof_offsets: Vec<u64>,
+    pub col_indices: Vec<u64>,
 }
 
 impl CompressedSparseRows {
@@ -65,7 +67,7 @@ pub fn edge_list_from_file(filename: &str) -> Vec<(u64, u64)> {
     let contents = fs::read_to_string(filename).expect("could not read file");
     let mut edges = vec![];
     for line in contents.lines() {
-        let line: Vec<&str> = line.split(',').collect();
+        let line: Vec<&str> = line.trim_matches(|c| c == '(' || c == ')').split(',').collect();
         edges.push((line[0].trim().parse().unwrap(), line[1].trim().parse().unwrap()));
     }
     edges
