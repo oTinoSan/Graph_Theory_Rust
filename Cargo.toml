@@ -1,5 +1,5 @@
 [package]
-name = "graph-theo"
+name = "graph_theo"
 version = "0.1.0"
 edition = "2021"
 

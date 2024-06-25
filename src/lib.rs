@@ -1,6 +1,7 @@
 // use array2d::Array2D;
 // use std::fs;
 
+pub mod csr_graph;
 pub mod compressed_sparse_rows;
 
 // todo!()
