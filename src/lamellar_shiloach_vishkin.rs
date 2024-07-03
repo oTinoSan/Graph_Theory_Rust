@@ -8,10 +8,21 @@ pub fn lamellar_main() {
 
     let old_parents = UnsafeArray::<u64>::new(&world, node_count, Distribution::Block);
     unsafe{
-        let _ = old_parents.dist_iter_mut().enumerate().map(|(i, x)| *x = i as u64);
+        let _ = old_parents.dist_iter_mut().enumerate().map(|(i, _)| i as u64);
     }
+
     old_parents.wait_all();
+
     world.barrier();
+
+    let new_parents = old_parents.clone();
+
+    unsafe {
+        let _ = new_parents.dist_iter_mut().map(|i| *i * 2);
+    }
+    new_parents.wait_all();
+
+    new_parents.print();
 
     old_parents.print();
 }
