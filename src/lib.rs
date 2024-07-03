@@ -1,7 +1,10 @@
 use array2d::Array2D;
 use std::fs;
 
+#[allow(unused_variables, non_snake_case)]
 pub mod shiloach_vishkin;
+
+pub mod lamellar_shiloach_vishkin;
 
 #[derive(Debug, Clone)]
 pub struct CompressedSparseRows {
