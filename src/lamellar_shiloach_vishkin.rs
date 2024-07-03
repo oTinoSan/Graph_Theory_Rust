@@ -15,10 +15,10 @@ pub fn lamellar_main() {
 
     world.barrier();
 
-    let new_parents = old_parents.clone();
+    let new_parents = UnsafeArray::<u64>::new(&world, node_count, Distribution::Block);
 
     unsafe {
-        let _ = new_parents.dist_iter_mut().for_each(|i| *i *= 2);
+        let _ = new_parents.local_iter_mut().zip(old_parents.local_iter()).for_each(|(n, o)| *n = *o * 2);
     }
     new_parents.wait_all();
 
