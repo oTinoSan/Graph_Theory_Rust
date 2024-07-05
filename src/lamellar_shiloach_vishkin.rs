@@ -57,7 +57,8 @@ impl LamellarAM for StochasticHook {
             },
             (_, _, _) => {
                 // find v_parent
-                let (_, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
+                let (pe, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
+                println!("PE{} accessing data from PE{} at local index {}, global index {}", lamellar::current_pe, pe, local_index, self.v);
                 let v_parent;
                 unsafe {
                     v_parent = self.parents.local_as_slice()[local_index];
@@ -107,6 +108,8 @@ pub fn lamellar_main() {
     // wait for each pe to finish writing to old_parents
     world.wait_all();
     world.barrier();
+
+    new_parents.print();
 
     // stochastic hooking: for every edge (u, v)
     // if parents[parents[v]] < new_parents[parents[u]]: new_parents[parents[u]] = parents[parents[v]]
