@@ -112,10 +112,14 @@ pub fn lamellar_main() {
     // if parents[parents[v]] < new_parents[parents[u]]: new_parents[parents[u]] = parents[parents[v]]
     let old_parents_clone = old_parents.clone();
     let new_parents_clone = new_parents.clone();
+    let world_clone = world.clone();
     let _ = edges.dist_iter().for_each(move|e| {
         let (remote_pe, _) = old_parents_clone.pe_and_offset_for_global_index(e.0 as usize).unwrap();
-        let _ = world.exec_am_pe(remote_pe, StochasticHook {parents: old_parents_clone.clone(), new_parents: new_parents_clone.clone(), vertex_count, u: e.0, v: e.1, v_parent: None, v_grandparent: None, u_parent: None});
+        let _ = world_clone.exec_am_pe(remote_pe, StochasticHook {parents: old_parents_clone.clone(), new_parents: new_parents_clone.clone(), vertex_count, u: e.0, v: e.1, v_parent: None, v_grandparent: None, u_parent: None});
     });
+
+    world.wait_all();
+    world.barrier();
 
     // aggressive hooking: for every edge (u, v)
     // if parents[parents[v]] < new_parents[u]: new_parents[u] = parents[parents[v]]
