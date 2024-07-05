@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 array2d = "0.3.2"
+async-trait = "0.1.80"
 lamellar = "0.6.1"
 serde = "1.0.203"

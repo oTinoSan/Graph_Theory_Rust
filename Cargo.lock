@@ -637,6 +637,7 @@ name = "graph-theory"
 version = "0.1.0"
 dependencies = [
  "array2d",
+ "async-trait",
  "lamellar",
  "serde",
 ]
