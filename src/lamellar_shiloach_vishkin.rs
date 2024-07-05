@@ -1,4 +1,4 @@
-use lamellar::array::prelude::*;
+use lamellar::{array::prelude::*, RemoteMemoryRegion};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps)]
@@ -22,9 +22,9 @@ struct StochasticHook {
 impl LamellarAM for StochasticHook {
     async fn exec(&self) {
         match (self.v_parent, self.v_grandparent, self.u_parent) {
-            (Some(v_parent), Some(v_grandparent), Some(u_parent)) => {
+            (Some(_), Some(v_grandparent), Some(u_parent)) => {
                 // compare v_grandparent to new_parents[u_parent]
-                let local_index = u_parent as usize % (self.vertex_count / lamellar::num_pes);
+                let (_, local_index) = self.parents.pe_and_offset_for_global_index(u_parent as usize).unwrap();
                 let u_grandparent;
                 unsafe {
                     u_grandparent = self.parents.local_as_slice()[local_index];
@@ -35,34 +35,34 @@ impl LamellarAM for StochasticHook {
                     }
                 }
             },
-            (Some(v_parent), Some(v_grandparent), _) => {
+            (Some(_), Some(_), _) => {
                 // find u_parent
-                let local_index = self.u as usize % (self.vertex_count / lamellar::num_pes);
+                let (_, local_index) = self.parents.pe_and_offset_for_global_index(self.u as usize).unwrap();
                 let u_parent;
                 unsafe {
                     u_parent = self.parents.local_as_slice()[local_index];
                 }
-                let remote_pe = u_parent as usize / self.vertex_count / lamellar::num_pes;
+                let (remote_pe, _) = self.parents.pe_and_offset_for_global_index(u_parent as usize).unwrap();
                 let _ = lamellar::world.exec_am_pe(remote_pe, StochasticHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, vertex_count: self.vertex_count, v_parent: self.v_parent, v_grandparent: self.v_grandparent, u_parent: Some(u_parent)});
             },
             (Some(v_parent), _, _) => {
                 // find v_grandparent
-                let local_index = v_parent as usize % (self.vertex_count / lamellar::num_pes);
+                let (_, local_index) = self.parents.pe_and_offset_for_global_index(v_parent as usize).unwrap();
                 let v_grandparent;
                 unsafe {
                     v_grandparent = self.parents.local_as_slice()[local_index];
                 }
-                let remote_pe = self.u as usize / self.vertex_count / lamellar::num_pes;
+                let (remote_pe, _) = self.parents.pe_and_offset_for_global_index(self.u as usize).unwrap();
                 let _ = lamellar::world.exec_am_pe(remote_pe, StochasticHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, vertex_count: self.vertex_count, v_parent: self.v_parent, v_grandparent: Some(v_grandparent), u_parent: None});
             },
             (_, _, _) => {
                 // find v_parent
-                let local_index = self.v as usize % (self.vertex_count / lamellar::num_pes);
+                let (_, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
                 let v_parent;
                 unsafe {
                     v_parent = self.parents.local_as_slice()[local_index];
                 }
-                let remote_pe = v_parent as usize / (self.vertex_count / lamellar::num_pes);
+                let (remote_pe, _) = self.parents.pe_and_offset_for_global_index(v_parent as usize).unwrap();
                 let _ = lamellar::world.exec_am_pe(remote_pe, StochasticHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, vertex_count: self.vertex_count, v_parent: Some(v_parent), v_grandparent: None, u_parent: None});
             }
         }
@@ -76,7 +76,7 @@ pub fn lamellar_main() {
     let num_pes = world.num_pes();
 
     // testing graph information
-    let node_count = 5;
+    let vertex_count = 5;
     let test_edges = vec![Edge(4, 0), Edge(2, 0), Edge(0, 2), Edge(1, 2), Edge(0, 1), Edge(0, 3), Edge(3, 4), Edge(1, 3), Edge(1, 4), Edge(3, 2), Edge(2, 3)];
     let edge_count = test_edges.len();
 
@@ -91,13 +91,13 @@ pub fn lamellar_main() {
     let edges = edges.into_read_only();
 
     // initialize the array of new parents for each vertex to be itself
-    let new_parents = UnsafeArray::<u64>::new(&world, node_count, Distribution::Block);
+    let new_parents = UnsafeArray::<u64>::new(&world, vertex_count, Distribution::Block);
     unsafe{
         let _ = new_parents.dist_iter_mut().enumerate().for_each(|(i, x)| *x = i as u64);
     }
 
     // initialize the array of parents in the last iteration
-    let old_parents = UnsafeArray::<u64>::new(&world, node_count, Distribution::Block);
+    let old_parents = UnsafeArray::<u64>::new(&world, vertex_count, Distribution::Block);
 
     // set up the old_parents array for the next iteration of SV
     unsafe {
@@ -110,6 +110,12 @@ pub fn lamellar_main() {
 
     // stochastic hooking: for every edge (u, v)
     // if parents[parents[v]] < new_parents[parents[u]]: new_parents[parents[u]] = parents[parents[v]]
+    let old_parents_clone = old_parents.clone();
+    let new_parents_clone = new_parents.clone();
+    let _ = edges.dist_iter().for_each(move|e| {
+        let (remote_pe, _) = old_parents_clone.pe_and_offset_for_global_index(e.0 as usize).unwrap();
+        let _ = world.exec_am_pe(remote_pe, StochasticHook {parents: old_parents_clone.clone(), new_parents: new_parents_clone.clone(), vertex_count, u: e.0, v: e.1, v_parent: None, v_grandparent: None, u_parent: None});
+    });
 
     // aggressive hooking: for every edge (u, v)
     // if parents[parents[v]] < new_parents[u]: new_parents[u] = parents[parents[v]]
@@ -121,6 +127,4 @@ pub fn lamellar_main() {
     new_parents.print();
 
     old_parents.print();
-
-    edges.print();
 }
