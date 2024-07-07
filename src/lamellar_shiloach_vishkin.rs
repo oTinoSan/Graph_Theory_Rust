@@ -272,7 +272,6 @@ pub fn lamellar_main() {
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
 
         for u in old_parents.last_global_index_for_pe(my_pe).unwrap() + 1 - old_parents.num_elems_local() ..= old_parents.last_global_index_for_pe(my_pe).unwrap() {
-            println!("pe {} u: {}", my_pe, u);
             let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(u).unwrap();
             let _ = world.exec_am_pe(remote_pe, Shortcut {parents: old_parents.clone(), new_parents: new_parents.clone(), u: u as u64, u_parent: None, u_grandparent: None, local_index});
         }
@@ -292,7 +291,7 @@ pub fn lamellar_main() {
         // compare them to the old grandparents
         let eq = new_grandparents.iter().zip(&local_grandparents).map(|(n, o)| *n == *o).fold(true, |acc, x| acc && x);
         // set the local changed value
-        unsafe {changed.local_as_mut_slice()[0] = eq};
+        unsafe {changed.local_as_mut_slice()[0] = !eq};
         world.barrier();
 
         // pe 0 folds all the changed values together, then uses an AM to set them to that folded value
@@ -307,6 +306,4 @@ pub fn lamellar_main() {
     }
 
     new_parents.print();
-
-    old_parents.print();
 }
