@@ -69,7 +69,7 @@ impl LamellarAM for StochasticHook {
             (_, _, _) => {
                 // find v_parent, then launch am to find v_grandparent
                 let (pe, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
-                println!("PE{} accessing data from PE{} at local index {}, global index {}", lamellar::current_pe, pe, local_index, self.v);
+                // println!("PE{} accessing data from PE{} at local index {}, global index {}", lamellar::current_pe, pe, local_index, self.v);
                 let v_parent;
                 unsafe {
                     v_parent = self.parents.local_as_slice()[local_index];
@@ -252,7 +252,7 @@ pub fn lamellar_main() {
 
         for &Edge(u, v) in edges.local_as_slice() {
             let (remote_pe, _) = old_parents.pe_and_offset_for_global_index(v as usize).unwrap();
-            println!("Edge ({}, {}) launching message to find parent of {} on pe {}", u, v, v, remote_pe);
+            // println!("Edge ({}, {}) launching message to find parent of {} on pe {}", u, v, v, remote_pe);
             let _ = world.exec_am_pe(remote_pe, StochasticHook {parents: old_parents.clone(), new_parents: new_parents.clone(), u, v, v_parent: None, v_grandparent: None, u_parent: None});
         }
 
@@ -274,6 +274,7 @@ pub fn lamellar_main() {
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
 
         for u in old_parents.last_global_index_for_pe(my_pe).unwrap() .. old_parents.last_global_index_for_pe(my_pe).unwrap() + old_parents.num_elems_local() {
+            println!("u: {}", u);
             let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(u).unwrap();
             let _ = world.exec_am_pe(remote_pe, Shortcut {parents: old_parents.clone(), new_parents: new_parents.clone(), u: u as u64, u_parent: None, u_grandparent: None, local_index});
         }
