@@ -273,7 +273,7 @@ pub fn lamellar_main() {
         // shortcutting: for every vertex u
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
 
-        for u in old_parents.last_global_index_for_pe(my_pe).unwrap() .. old_parents.last_global_index_for_pe(my_pe).unwrap() + old_parents.num_elems_local() {
+        for u in old_parents.last_global_index_for_pe(my_pe).unwrap() - old_parents.num_elems_local() .. old_parents.last_global_index_for_pe(my_pe).unwrap() {
             println!("pe {} u: {}", my_pe, u);
             let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(u).unwrap();
             let _ = world.exec_am_pe(remote_pe, Shortcut {parents: old_parents.clone(), new_parents: new_parents.clone(), u: u as u64, u_parent: None, u_grandparent: None, local_index});
