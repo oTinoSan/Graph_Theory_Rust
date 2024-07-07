@@ -66,5 +66,7 @@ fn main() {
         col_indices: vec![1, 3, 0, 2, 5, 10, 1, 4, 5, 0, 4, 2, 3, 5, 1, 2, 4, 7, 10, 8, 9, 5, 6, 11, 6, 11, 1, 5, 8, 9, 12, 11, 13, 12]
     };
 
-    println!("Shiloach Vishkin Example 4: {:?}", shiloach_vishkin(ex_4));
+    // println!("Shiloach Vishkin Example 4: {:?}", shiloach_vishkin(ex_4));
+
+    println!("Edges: {:?}", ex_4.to_edge_list());
 }

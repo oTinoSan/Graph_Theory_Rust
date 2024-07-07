@@ -64,6 +64,17 @@ impl CompressedSparseRows {
         }
         adj
     }
+
+    pub fn to_edge_list(self) -> Vec<(u64, u64)> {
+        let mut edges = vec![];
+        let size = self.rof_offsets.len() - 1;
+        for u in 0..size {
+            for v in self.rof_offsets[u]..self.rof_offsets[u + 1] {
+                edges.push((u as u64, self.col_indices[v as usize]));
+            }
+        }
+        edges
+    }
 }
 
 pub fn edge_list_from_file(filename: &str) -> Vec<(u64, u64)> {
