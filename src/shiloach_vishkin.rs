@@ -1,3 +1,4 @@
+use super::compressed_sparse_rows::CompressedSparseRows;
 /* 
 // Example 1 - forest of stars
 int rows  = 15;

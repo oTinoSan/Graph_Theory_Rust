@@ -4,6 +4,7 @@
 pub mod csr_graph;
 pub mod compressed_sparse_rows;
 pub mod shiloach_vishkin;
+pub mod exercises;
 
 // todo!()
 // pub fn from_edge_list(mut edges: Vec<(u64, u64)>) -> Self {

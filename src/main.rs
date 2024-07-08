@@ -12,7 +12,7 @@ fn main() {
 
     let connected_components = shiloach_vishkin::run_connected_components(rows, row_offsets, col_indices);
 
-    println!("Connected Component ID's: {:?}", connected_components);
+    println!("Connected Component ID's: {:?} \n\n", connected_components);
 
 
     // Compressed Sparse Rows Example
@@ -33,7 +33,6 @@ fn main() {
     // Print the CSR representation
     println!("Row Offset: {:?}", compression.row_offset);
     println!("Column Indices: {:?}", compression.col_indices);
-
 
 
     // Example with edges vector
@@ -57,12 +56,6 @@ fn main() {
 
 
 
-
-
-
-
-
-
 //     // Example of reading from a file
 //     // Replace "path/to/your/file.txt" with the actual file path
 //     if let Ok(edges_from_file) = edge_list_from_file("path/to/your/file.txt") {
@@ -71,10 +64,6 @@ fn main() {
 //         println!("{:?}", adj_matrix_from_file);
 //     }
 // }
-
-
-
-
 
 
 
@@ -110,7 +99,7 @@ impl CompressedSparseRows {
 
 
     pub fn from_edge_list(mut edges: Vec<(u64, u64)>) -> Self {
-        edges.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+   
 
         let mut row_offset: Vec<u64> = vec![0];
         let mut col_indices = vec![];
