@@ -216,12 +216,12 @@ pub fn lamellar_main() {
     // let vertex_count = 5;
     // let test_edges = vec![Edge(4, 0), Edge(2, 0), Edge(0, 2), Edge(1, 2), Edge(0, 1), Edge(0, 3), Edge(3, 4), Edge(1, 3), Edge(1, 4), Edge(3, 2), Edge(2, 3)];
     // let edge_count = test_edges.len();
-    // let vertex_count = 15;
-    // let test_edges: Vec<Edge> = vec![(0, 1), (0, 3), (1, 0), (1, 2), (1, 5), (1, 10), (2, 1), (2, 4), (2, 5), (3, 0), (3, 4), (4, 2), (4, 3), (4, 5), (5, 1), (5, 2), (5, 4), (5, 7), (5, 10), (6, 8), (6, 9), (7, 5), (8, 6), (8, 11), (9, 6), (9, 11), (10, 1), (10, 5), (11, 8), (11, 9), (11, 12), (12, 11), (12, 13), (13, 12)].into_iter().map(|x| Edge::from(x)).collect();
-    // let edge_count = test_edges.len();
-
-    let (test_edges, vertex_count) = parse_edge_tsv("graph.tsv");
+    let vertex_count = 15;
+    let test_edges: Vec<Edge> = vec![(0, 1), (0, 3), (1, 0), (1, 2), (1, 5), (1, 10), (2, 1), (2, 4), (2, 5), (3, 0), (3, 4), (4, 2), (4, 3), (4, 5), (5, 1), (5, 2), (5, 4), (5, 7), (5, 10), (6, 8), (6, 9), (7, 5), (8, 6), (8, 11), (9, 6), (9, 11), (10, 1), (10, 5), (11, 8), (11, 9), (11, 12), (12, 11), (12, 13), (13, 12)].into_iter().map(|x| Edge::from(x)).collect();
     let edge_count = test_edges.len();
+
+    // let (test_edges, vertex_count) = parse_edge_tsv("graph.tsv");
+    // let edge_count = test_edges.len();
 
     // initialize edge array
     let edges = UnsafeArray::<Edge>::new(&world, edge_count, distribution);
