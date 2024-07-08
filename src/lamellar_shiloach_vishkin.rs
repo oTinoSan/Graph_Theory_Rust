@@ -221,7 +221,6 @@ pub fn lamellar_main() {
 
     let (test_edges, vertex_count) = parse_edge_tsv("graph.tsv");
     let edge_count = test_edges.len();
-    println!("Edges: {}", edge_count);
 
     // initialize edge array
     let edges = UnsafeArray::<Edge>::new(&world, edge_count, Distribution::Block);
@@ -249,6 +248,10 @@ pub fn lamellar_main() {
 
     // initialize the array of parents in the last iteration
     let old_parents = UnsafeArray::<u64>::new(&world, vertex_count, Distribution::Block);
+
+    let mut iterations = 0;
+
+    let start = std::time::Instant::now();
 
     while unsafe {changed.local_as_mut_slice()[0]} {
 
@@ -313,7 +316,11 @@ pub fn lamellar_main() {
         }
         local_grandparents = new_grandparents;
         world.barrier();
+        iterations += 1;
+        if my_pe == 0 {
+            println!("Iteration {} complete after {:?}", iterations, start.elapsed());
+        }
     }
 
-    new_parents.print();
+    //new_parents.print();
 }
