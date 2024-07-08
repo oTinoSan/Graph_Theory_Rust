@@ -324,8 +324,8 @@ pub fn lamellar_main() {
         // pe 0 folds all the changed values together, then uses an AM to set them to that folded value
         // this could probably safely be done on each PE
         if my_pe == 0 {
-            let all_eq = unsafe {changed.onesided_iter().into_iter().fold(true, |acc, x| acc & x)};
-            let _ = world.exec_am_all(SetChanged {changed: changed.clone(), val: all_eq});
+            let any_changed = unsafe {changed.onesided_iter().into_iter().fold(false, |acc, x| acc || *x)};
+            let _ = world.exec_am_all(SetChanged {changed: changed.clone(), val: any_changed});
             world.wait_all();
         }
         local_grandparents = new_grandparents;
