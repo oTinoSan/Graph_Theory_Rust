@@ -210,6 +210,7 @@ pub fn lamellar_main() {
     let world = lamellar::LamellarWorldBuilder::new().build();
     let my_pe = world.my_pe();
     let num_pes = world.num_pes();
+    let distribution = Distribution::Cyclic;
 
     // // testing graph information
     // let vertex_count = 5;
@@ -223,7 +224,7 @@ pub fn lamellar_main() {
     let edge_count = test_edges.len();
 
     // initialize edge array
-    let edges = UnsafeArray::<Edge>::new(&world, edge_count, Distribution::Block);
+    let edges = UnsafeArray::<Edge>::new(&world, edge_count, distribution);
 
     unsafe {
         let _ = edges.dist_iter_mut().enumerate().for_each(move |(i, e)| *e = test_edges[i]);
@@ -233,7 +234,7 @@ pub fn lamellar_main() {
     let edges = edges.into_read_only();
 
     // initialize the array of new parents for each vertex to be itself
-    let new_parents = UnsafeArray::<u64>::new(&world, vertex_count, Distribution::Block);
+    let new_parents = UnsafeArray::<u64>::new(&world, vertex_count, distribution);
     unsafe{
         let _ = new_parents.dist_iter_mut().enumerate().for_each(|(i, x)| *x = i as u64);
     }
@@ -243,11 +244,11 @@ pub fn lamellar_main() {
 
     // initialize a distributed array used to determine if another iteration is required
     // each PE has one entry in the array, which will be set true at first
-    let changed = UnsafeArray::<bool>::new(&world, num_pes, Distribution::Block);
+    let changed = UnsafeArray::<bool>::new(&world, num_pes, distribution);
     unsafe {changed.local_as_mut_slice()[0] = true};
 
     // initialize the array of parents in the last iteration
-    let old_parents = UnsafeArray::<u64>::new(&world, vertex_count, Distribution::Block);
+    let old_parents = UnsafeArray::<u64>::new(&world, vertex_count, distribution);
 
     let mut iterations = 0;
 
@@ -284,7 +285,17 @@ pub fn lamellar_main() {
         // shortcutting: for every vertex u
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
 
-        for u in old_parents.last_global_index_for_pe(my_pe).unwrap() + 1 - old_parents.num_elems_local() ..= old_parents.last_global_index_for_pe(my_pe).unwrap() {
+        // values to iterate through on each pe vary based on whether the vertices are block or cyclic distributed
+        let iter = match &distribution {
+            Distribution::Block => {
+                (old_parents.first_global_index_for_pe(my_pe).unwrap() ..= old_parents.last_global_index_for_pe(my_pe).unwrap()).step_by(1)
+            },
+            Distribution::Cyclic => {
+                (old_parents.first_global_index_for_pe(my_pe).unwrap() ..= old_parents.last_global_index_for_pe(my_pe).unwrap()).step_by(num_pes)
+            }
+        };
+
+        for u in iter {
             let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(u).unwrap();
             let _ = world.exec_am_pe(remote_pe, Shortcut {parents: old_parents.clone(), new_parents: new_parents.clone(), u: u as u64, u_parent: None, u_grandparent: None, local_index});
         }

@@ -1,0 +1,60 @@
+Timer started after arrays are built, mostly measuring AM performance
+These benchmarks performed using block distributed arrays
+
+Compiled as debug versions (this seems to have a large impact on something)
+
+[wwshayn@kruskal-login3 graph-exploration]$ srun -N 2 --ntasks-per-node=2 target/debug/lamellar_bin                                                                                   
+Iteration 1 complete after 31.047066426s
+Iteration 2 complete after 115.276612749s
+Iteration 3 complete after 200.161088455s
+
+srun -N 4 --ntasks-per-node=1
+Iteration 1 complete after 48.346544239s
+Iteration 2 complete after 116.4097747s
+Iteration 3 complete after 184.932111015s
+
+srun -N 1 --ntasks-per-node=4
+Iteration 1 complete after 148.254587984s
+Iteration 2 complete after 505.183216015s
+Iteration 3 complete after 861.317162817s
+
+Compiled as release
+srun -N 2 --ntasks-per-node=128
+Iteration 1 complete after 4.738708665s
+Iteration 2 complete after 88.644762434s
+Iteration 3 complete after 192.55460122s
+
+srun -N 2 --ntasks-per-node=64
+Iteration 1 complete after 12.540816384s
+Iteration 2 complete after 187.930901261s
+Iteration 3 complete after 397.264259103s
+
+srun -N 2 --ntasks-per-node=32
+Iteration 1 complete after 11.296265827s
+Iteration 2 complete after 189.042462637s
+Iteration 3 complete after 417.850959371s
+
+srun -N 2 --ntasks-per-node=16
+Iteration 1 complete after 25.00937398s
+Iteration 2 complete after 180.116919349s
+Iteration 3 complete after 344.272580184s
+
+srun -N 2 --ntasks-per-node=8
+Iteration 1 complete after 36.911573365s
+Iteration 2 complete after 152.70968479s
+Iteration 3 complete after 269.325010867s
+
+srun -N 2 --ntasks-per-node=4
+Iteration 1 complete after 40.296447209s
+Iteration 2 complete after 135.622701723s
+Iteration 3 complete after 232.14471893s
+
+srun -N 2 --ntasks-per-node=2
+Iteration 1 complete after 24.029974201s
+Iteration 2 complete after 64.262551641s
+Iteration 3 complete after 99.581003074s
+
+srun -N 2 --ntasks-per-node=1
+Iteration 1 complete after 37.16164824s
+Iteration 2 complete after 89.202798667s
+Iteration 3 complete after 142.37929291s
