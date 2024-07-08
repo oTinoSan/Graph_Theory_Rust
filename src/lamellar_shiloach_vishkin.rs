@@ -194,6 +194,17 @@ impl LamellarAm for SetChanged {
     }
 }
 
+fn parse_edge_tsv(filename: &str) -> (Vec<Edge>, usize) {
+    let mut edges = vec![];
+    let mut rdr = csv::ReaderBuilder::new().has_headers(false).delimiter(b'\t').from_path(filename).unwrap();
+    for edge in rdr.deserialize() {
+        let edge: Edge = edge.unwrap();
+        edges.push(edge);
+    }
+    let vertex_count = edges.last().unwrap().1 as usize + 1;
+    (edges, vertex_count)
+}
+
 pub fn lamellar_main() {
     // Initialize lamellar variables
     let world = lamellar::LamellarWorldBuilder::new().build();
