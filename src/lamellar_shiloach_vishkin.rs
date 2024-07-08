@@ -207,6 +207,7 @@ pub fn lamellar_main() {
     let vertex_count = 15;
     let test_edges: Vec<Edge> = vec![(0, 1), (0, 3), (1, 0), (1, 2), (1, 5), (1, 10), (2, 1), (2, 4), (2, 5), (3, 0), (3, 4), (4, 2), (4, 3), (4, 5), (5, 1), (5, 2), (5, 4), (5, 7), (5, 10), (6, 8), (6, 9), (7, 5), (8, 6), (8, 11), (9, 6), (9, 11), (10, 1), (10, 5), (11, 8), (11, 9), (11, 12), (12, 11), (12, 13), (13, 12)].into_iter().map(|x| Edge::from(x)).collect();
     let edge_count = test_edges.len();
+
     // initialize edge array
     let edges = UnsafeArray::<Edge>::new(&world, edge_count, Distribution::Block);
 
@@ -254,9 +255,6 @@ pub fn lamellar_main() {
             let _ = world.exec_am_pe(remote_pe, StochasticHook {parents: old_parents.clone(), new_parents: new_parents.clone(), u, v, v_parent: None, v_grandparent: None, u_parent: None});
         }
 
-        world.wait_all();
-        world.barrier();
-
         // aggressive hooking: for every edge (u, v)
         // if parents[parents[v]] < new_parents[u]: new_parents[u] = parents[parents[v]]
 
@@ -264,9 +262,6 @@ pub fn lamellar_main() {
             let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(v as usize).unwrap();
             let _ = world.exec_am_pe(remote_pe, AggressiveHook {parents: old_parents.clone(), new_parents: new_parents.clone(), u, v, v_parent: None, v_grandparent: None, local_index});
         }
-
-        world.wait_all();
-        world.barrier();
 
         // shortcutting: for every vertex u
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
