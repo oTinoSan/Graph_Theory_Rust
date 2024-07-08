@@ -210,7 +210,7 @@ pub fn lamellar_main() {
     let world = lamellar::LamellarWorldBuilder::new().build();
     let my_pe = world.my_pe();
     let num_pes = world.num_pes();
-    let distribution = Distribution::Cyclic;
+    let distribution = Distribution::Block;
 
     // // testing graph information
     // let vertex_count = 5;
@@ -238,9 +238,12 @@ pub fn lamellar_main() {
     unsafe{
         let _ = new_parents.dist_iter_mut().enumerate().for_each(|(i, x)| *x = i as u64);
     }
+    world.wait_all();
+    world.barrier();
 
     // initialize a local array of grandparents
     let mut local_grandparents = unsafe {new_parents.local_as_slice().to_owned()};
+    new_parents.print();
 
     // initialize a distributed array used to determine if another iteration is required
     // each PE has one entry in the array, which will be set true at first
@@ -333,5 +336,5 @@ pub fn lamellar_main() {
         }
     }
 
-    //new_parents.print();
+    new_parents.print();
 }
