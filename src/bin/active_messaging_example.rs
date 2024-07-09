@@ -17,7 +17,7 @@ impl LamellarAM for HelloWorld_am {
     }
 }
 
-pub fn active_example (){
+pub fn main (){
     let mut world = lamellar::LamellarWorldBuilder::new().build();
     let my_pe = world.my_pe();
     let num_pes = world.num_pes();
