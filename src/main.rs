@@ -51,6 +51,9 @@ fn main() {
 
     // println!("Row Offset: {:?}", compression_2.row_offset);
     // println!("Column Indices: {:?}", compression_2.col_indices);
-    active_messaging_example::active_example();
+    
+    // active_messaging_example::active_example();
+
+    hello_world_am_example::hello_am_example();
 
 }
