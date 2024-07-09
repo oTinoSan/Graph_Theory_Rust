@@ -1,7 +1,10 @@
 // use array2d::Array2D;
 use std::vec::Vec;
 // use graph_theo::compressed_sparse_rows::CompressedSparseRows;
-use graph_exploration::{lamellar_exercise::active_messaging_example, shiloach_vishkin};
+use graph_exploration::{
+    lamellar_exercise::active_messaging_example, 
+    lamellar_exercise::hello_world_am_example,
+    shiloach_vishkin};
 
 fn main() {
     // Shiloach Viskin Example
