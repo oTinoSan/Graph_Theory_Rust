@@ -3,7 +3,7 @@
 /// the active message consists of a single input value (the pe id of the originating pe)
 /// when executed it will print Hello World, the PE and thread it executed on, and the orginating pe
 /// --------------------------------------------------------------------
-use lamellar::ActiveMessaging; // needed for exec_am_all
+use lamellar::active_messaging::prelude::*; // needed for exec_am_all
 
 //----------------- Hello World Active message -----------------//
 #[lamellar::AmData(Debug, Clone)]
