@@ -27,27 +27,13 @@ fn main() {
 
     // let converted_array = Array2D::from_rows(&rows).expect("Failed?");
 
-    // // Convert the adjacency matrix to CSR format
+    // // // Convert the adjacency matrix to CSR format
     // let compression = CompressedSparseRows::from_adjacency(&converted_array);
 
-    // // Print the CSR representation
+    // // // Print the CSR representation
     // println!("Row Offset: {:?}", compression.row_offset);
     // println!("Column Indices: {:?}", compression.col_indices);
 
-
-    // // Example with edges vector
-    // let edges = vec![(1, 2), (1, 3), (1, 4), (2, 3), (2, 4),
-    // (2, 5), (3, 1), (3, 4), (4, 3), (4, 5), (5, 1)];
-    // let graph = CompressedSparseRows::from_edge_list(edges);
-    // let adj_matrix = graph.to_adjacency_matrix();
-    // println!("{:?}", adj_matrix);
-
-    // let converted_array_2 = Array2D::from_rows(&adj_matrix).expect("Failed?");
-
-    // let compression_2 = CompressedSparseRows::from_adjacency(&converted_array_2);
-
-    // println!("Row Offset: {:?}", compression_2.row_offset);
-    // println!("Column Indices: {:?}", compression_2.col_indices);
     
 
 }

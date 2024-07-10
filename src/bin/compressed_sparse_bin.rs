@@ -29,21 +29,23 @@ impl CompressedSparseRows {
     }
 
 
-    pub fn from_edge_list(mut edges: Vec<(u64, u64)>) -> Self {
-        edges.sort_unstable_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+    pub fn edges_to_csr(mut edges: Vec<(u64, u64, u64)>) -> Self {
+        edges.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
 
+        let mut values = Vec::new();
         let mut row_offset: Vec<u64> = vec![0];
-        let mut col_indices = vec![];
+        let mut col_indices = Vec::new();
 
-        for (src, dest) in edges {
-            while row_offset.len() <= src as usize {
+        for (source, dest, value) in edges {
+            while row_offset.len() <= source as usize {
                 row_offset.push(col_indices.len() as u64);
             }
             col_indices.push(dest);
+            values.push(value);
         }
         row_offset.push(col_indices.len() as u64); // Ensure we can index the end of the last node's edges
 
-        Self { row_offset, col_indices, values: todo!() }
+        Self { values, row_offset, col_indices }
     }
 
 
@@ -67,6 +69,10 @@ impl CompressedSparseRows {
 }
 
 fn main() {
+    /////////////////////////////
+    /// Coverts a vec to CSR ///
+    ///////////////////////////
+
     let rows: Vec<Vec<u64>> = vec![
         vec![0, 0, 2, 5, 0, 0],
         vec![8, 0, 0, 0, 1, 0],
@@ -78,11 +84,39 @@ fn main() {
     let converted_array = Array2D::from_rows(&rows).expect("Failed?");
 
     // // Convert the adjacency matrix to CSR format
-    let compression = CompressedSparseRows::from_adjacency(&converted_array);
+    let compression = from_adjacency(&converted_array);
 
     // // Print the CSR representation
     println!("Values: {:?}", compression.values);
-    println!("Row Offset: {:?}", compression.row_offset);
     println!("Column Indices: {:?}", compression.col_indices);
+    println!("Row Offset: {:?}", compression.row_offset);
 
+    
+    /////////////////////////////
+    /// Coverts edges to CSR ///
+    ///////////////////////////
+
+    let edge_list = vec![
+        (1, 2, 10), (1, 3, 15), (1, 4, 20), 
+        (2, 3, 25), (2, 4, 30), (2, 5, 35), 
+        (3, 1, 40), (3, 4, 45), (4, 3, 50), 
+        (4, 5, 55), (5, 1, 60)
+    ];
+
+    let edge_conversion = CompressedSparseRows::edges_to_csr(edge_list);
+
+    println!("Values: {:?}", edge_conversion.values);
+    println!("Column Indices: {:?}", edge_conversion.col_indices);
+    println!("Row Offset: {:?}", edge_conversion.row_offset);
+
+
+    // let graph = CompressedSparseRows::from_edge_list(edges);
+    // let adj_matrix = graph.to_adjacency_matrix();
+    // println!("{:?}", adj_matrix);
+    // let converted_array_2 = Array2D::from_rows(&adj_matrix).expect("Failed?");
+
+    // let compression_2 = CompressedSparseRows::from_adjacency(&converted_array_2);
+
+    // println!("Row Offset: {:?}", compression_2.row_offset);
+    // println!("Column Indices: {:?}", compression_2.col_indices);
 }
