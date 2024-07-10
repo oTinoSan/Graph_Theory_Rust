@@ -43,7 +43,7 @@ impl CompressedSparseRows {
             col_indices.push(dest);
             values.push(value);
         }
-        row_offset.push(col_indices.len() as u64); // Ensure we can index the end of the last node's edges
+        row_offset.push(col_indices.len() as u64); 
 
         Self { values, row_offset, col_indices }
     }
@@ -108,6 +108,21 @@ fn main() {
     println!("Values: {:?}", edge_conversion.values);
     println!("Column Indices: {:?}", edge_conversion.col_indices);
     println!("Row Offset: {:?}", edge_conversion.row_offset);
+
+    ///////////////////////////////
+    /// Converts CSR to matrix ///
+    /////////////////////////////
+
+    let csr = CompressedSparseRows {
+        values: [2, 5, 8, 1, 9, 3, 4, 7, 2, 1, 6, 9],
+        row_offset: [0, 2, 4, 7, 9, 12],
+        col_indices: [2, 3, 0, 4, 1, 2, 5, 1, 5, 0, 2, 5],
+    };
+
+    let adj_matrix = csr.to_adjacency_matrix();
+    for row in adj_matrix {
+        println!("{:?}", row);
+    }
 
 
     // let graph = CompressedSparseRows::from_edge_list(edges);
