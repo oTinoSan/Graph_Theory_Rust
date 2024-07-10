@@ -84,7 +84,7 @@ fn main() {
     let converted_array = Array2D::from_rows(&rows).expect("Failed?");
 
     // // Convert the adjacency matrix to CSR format
-    let compression = from_adjacency(&converted_array);
+    let compression = CompressedSparseRows::from_adjacency(&converted_array);
 
     // // Print the CSR representation
     println!("Values: {:?}", compression.values);
