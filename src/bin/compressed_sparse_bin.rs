@@ -50,7 +50,7 @@ impl CompressedSparseRows {
 
 
     pub fn to_adjacency_matrix(&self) -> Vec<Vec<u64>> {
-        let num_rows = self.row_offset.len() - 2;
+        let num_rows = self.row_offset.len() - 1;
         let max_col_index = *self.col_indices.iter().max().unwrap_or(&0) as usize;
         let matrix_size = std::cmp::max(num_rows, max_col_index + 1);
 
@@ -118,7 +118,7 @@ fn main() {
 
     let csr = CompressedSparseRows {
         values: vec![2, 5, 8, 1, 9, 3, 4, 7, 2, 1, 6, 9],
-        row_offset: vec![0, 2, 4, 7, 9, 12],
+        row_offset: vec![2, 4, 7, 9, 12],
         col_indices: vec![2, 3, 0, 4, 1, 2, 5, 1, 5, 0, 2, 5],
     };
 
