@@ -60,9 +60,9 @@ impl CompressedSparseRows {
             let start = self.row_offset[row] as usize;
             let end = self.row_offset[row + 1] as usize;
             for col_index in start..end {
-                let col = self.col_indices[col_index as usize];
-                let value = self.values[col_index];
-                adj_matrix[row][col] = value;
+                let col = self.col_indices[col_index] as usize;
+                let value = self.values[col_index]; 
+                adj_matrix[row][col] = value; 
             }
         }
 
@@ -111,6 +111,7 @@ fn main() {
     println!("Column Indices: {:?}", edge_conversion.col_indices);
     println!("Row Offset: {:?}", edge_conversion.row_offset);
 
+    
     ///////////////////////////////
     /// Converts CSR to matrix ///
     /////////////////////////////
@@ -125,7 +126,6 @@ fn main() {
     for row in adj_matrix {
         println!("{:?}", row);
     }
-
 
     // let graph = CompressedSparseRows::from_edge_list(edges);
     // let adj_matrix = graph.to_adjacency_matrix();
