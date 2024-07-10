@@ -43,7 +43,7 @@ impl CompressedSparseRows {
         }
         row_offset.push(col_indices.len() as u64); // Ensure we can index the end of the last node's edges
 
-        Self { values, row_offset, col_indices }
+        Self { row_offset, col_indices, values: todo!() }
     }
 
 
