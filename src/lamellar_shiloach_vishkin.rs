@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use lamellar::array::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -289,7 +287,7 @@ pub fn lamellar_main() {
         // if parents[parents[u]] < new_parents[u]: new_parents[u] = parents[parents[u]]
 
         // values to iterate through on each pe vary based on whether the vertices are block or cyclic distributed
-        let iter = match &distribution {
+        let iter = match distribution {
             Distribution::Block => {
                 (old_parents.first_global_index_for_pe(my_pe).unwrap() ..= old_parents.last_global_index_for_pe(my_pe).unwrap()).step_by(1)
             },

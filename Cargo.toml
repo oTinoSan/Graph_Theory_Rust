@@ -1,3 +1,6 @@
+[workspace]
+members = ["rmat-generator"]
+
 [package]
 name = "graph-theory"
 version = "0.1.0"
