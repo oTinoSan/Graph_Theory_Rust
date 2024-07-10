@@ -59,8 +59,10 @@ impl CompressedSparseRows {
         for row in 0..num_rows {
             let start = self.row_offset[row] as usize;
             let end = self.row_offset[row + 1] as usize;
-            for &col in &self.col_indices[start..end] {
-                adj_matrix[row][col as usize] = 1;
+            for col_index in start..end {
+                let col = self.col_indices[col_index as usize];
+                let value = self.values[col_index];
+                adj_matrix[row][col] = value;
             }
         }
 
