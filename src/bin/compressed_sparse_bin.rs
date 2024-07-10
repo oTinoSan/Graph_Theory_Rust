@@ -1,6 +1,7 @@
 use array2d::Array2D;
 
 pub struct CompressedSparseRows {
+    pub values: Vec<u64>,
     pub row_offset: Vec<u64>,
     pub col_indices: Vec<u64>,
 }
@@ -9,20 +10,22 @@ pub struct CompressedSparseRows {
 impl CompressedSparseRows {
     pub fn from_adjacency(adj: &Array2D<u64>) -> Self {
         let mut counter = 0;
+        let mut values = vec![];
         let mut row_offset = vec![0];
         let mut col_indices = Vec::new();
 
         for row in adj.rows_iter() {
             for (column, &item) in row.enumerate() {
-                if item == 1 {
+                if item != 0 {
                     counter += 1;
-                    col_indices.push(column as u64 + 1);
+                    values.push(item);
+                    col_indices.push(column as u64);
                 }
             }
             row_offset.push(counter);
         }
 
-        Self { row_offset, col_indices }
+        Self { values, row_offset, col_indices }
     }
 
 
@@ -40,7 +43,7 @@ impl CompressedSparseRows {
         }
         row_offset.push(col_indices.len() as u64); // Ensure we can index the end of the last node's edges
 
-        Self { row_offset, col_indices }
+        Self { values, row_offset, col_indices }
     }
 
 
@@ -65,11 +68,11 @@ impl CompressedSparseRows {
 
 fn main() {
     let rows: Vec<Vec<u64>> = vec![
-        vec![0, 1, 1, 1, 0],
-        vec![0, 0, 1, 1, 1],
-        vec![1, 0, 0, 1, 0],
-        vec![0, 0, 1, 0, 1],
-        vec![1, 0, 0, 0, 0],
+        vec![0, 0, 2, 5, 0, 0],
+        vec![8, 0, 0, 0, 1, 0],
+        vec![0, 9, 3, 0, 0, 4],
+        vec![0, 7, 0, 0, 0, 2],
+        vec![1, 0, 6, 0, 0, 9],
     ];
 
     let converted_array = Array2D::from_rows(&rows).expect("Failed?");
@@ -78,6 +81,7 @@ fn main() {
     let compression = CompressedSparseRows::from_adjacency(&converted_array);
 
     // // Print the CSR representation
+    println!("Values: {:?}", compression.values);
     println!("Row Offset: {:?}", compression.row_offset);
     println!("Column Indices: {:?}", compression.col_indices);
 
