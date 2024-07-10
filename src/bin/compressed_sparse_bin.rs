@@ -57,7 +57,7 @@ impl CompressedSparseRows {
         let mut adj_matrix = vec![vec![0; matrix_size]; matrix_size];
 
         for row in 0..num_rows {
-            let start = self.row_offset[row] as usize;
+            let start = self.row_offset[row - 1] as usize;
             let end = self.row_offset[row + 1] as usize; // Corrected this line
             for col_index in start..end {
                 let col = self.col_indices[col_index] as usize;
