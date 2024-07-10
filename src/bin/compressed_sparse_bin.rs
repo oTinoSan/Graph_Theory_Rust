@@ -114,9 +114,9 @@ fn main() {
     /////////////////////////////
 
     let csr = CompressedSparseRows {
-        values: [2, 5, 8, 1, 9, 3, 4, 7, 2, 1, 6, 9],
-        row_offset: [0, 2, 4, 7, 9, 12],
-        col_indices: [2, 3, 0, 4, 1, 2, 5, 1, 5, 0, 2, 5],
+        values: vec![2, 5, 8, 1, 9, 3, 4, 7, 2, 1, 6, 9],
+        row_offset: vec![0, 2, 4, 7, 9, 12],
+        col_indices: vec![2, 3, 0, 4, 1, 2, 5, 1, 5, 0, 2, 5],
     };
 
     let adj_matrix = csr.to_adjacency_matrix();
