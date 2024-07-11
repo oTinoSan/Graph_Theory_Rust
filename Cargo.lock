@@ -875,13 +875,6 @@ dependencies = [
 
 [[package]]
 name = "lamellar"
-version = "0.1.0"
-dependencies = [
- "lamellar 0.6.1",
-]
-
-[[package]]
-name = "lamellar"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb864a8716c457fac2be817ddb848064a8fa19d5d6bdd716d7b694f9ea3e55fc"
@@ -932,6 +925,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.70",
+]
+
+[[package]]
+name = "lamellar_stuff"
+version = "0.1.0"
+dependencies = [
+ "lamellar",
 ]
 
 [[package]]

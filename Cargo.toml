@@ -1,7 +1,7 @@
 [workspace]
-
+resolver = "2"
 members = [
-    "lamellar",
+    "lamellar_stuff",
     "compressed_sparse_rows", 
     "shiloach_vishkin", 
     "threads_exercises",
