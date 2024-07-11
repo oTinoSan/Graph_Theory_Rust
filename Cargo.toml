@@ -2,17 +2,8 @@
 
 members = [
     "lamellar",
-    "compressed_sparse_rows", "shiloach_vishkin",
+    "compressed_sparse_rows", 
+    "shiloach_vishkin", 
+    "threads_exercises",
 ]
 
-
-[package]
-name = "graph-exploration"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-array2d = "0.3.2"
-rayon = "1.10.0"
-lamellar = { version = "0.6.1", features = ["enable-rofi"]}
-async-trait = "0.1.81"

@@ -724,16 +724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "graph-exploration"
-version = "0.1.0"
-dependencies = [
- "array2d",
- "async-trait",
- "lamellar 0.6.1",
- "rayon",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1609,6 +1599,13 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if 1.0.0",
  "once_cell",
+]
+
+[[package]]
+name = "threads_exercises"
+version = "0.1.0"
+dependencies = [
+ "rayon",
 ]
 
 [[package]]
