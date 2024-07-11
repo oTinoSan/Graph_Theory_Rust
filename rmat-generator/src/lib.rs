@@ -1,23 +1,26 @@
-use rand::{distributions::Distribution, rngs::SmallRng, thread_rng, RngCore, SeedableRng};
+use rand::{distributions::Distribution, thread_rng, RngCore, SeedableRng};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Edge(pub usize, pub usize);
 
+pub trait CloneSeedableRng: Clone + RngCore + SeedableRng {}
+impl<T: Clone + RngCore + SeedableRng> CloneSeedableRng for T {}
+
 #[derive(Clone, Debug)]
-pub struct RMATGraph {
+pub struct RMATGraph <T> {
     pub order: usize,
     fuzz: f64,
     seed: u64,
-    gen: SmallRng,
+    gen: T,
     edge_count: usize,
     partition: [f64; 4],
     directed: bool,
 }
 
-impl RMATGraph {
+impl<T> RMATGraph <T> where T: CloneSeedableRng{
     pub fn new(order: usize, fuzz: f64, seed: Option<u64>, edge_count: usize, partition: [f64; 4], directed: bool) -> Self {
         let seed = seed.unwrap_or_else(|| thread_rng().next_u64());
-        Self {order, fuzz, seed, gen: SmallRng::seed_from_u64(seed), edge_count, partition, directed}
+        Self {order, fuzz, seed, gen: T::seed_from_u64(seed), edge_count, partition, directed}
     }
 
     pub fn generate_edge(&mut self) -> Edge {
@@ -30,19 +33,6 @@ impl RMATGraph {
         let mut v = 0;
         let distribution = rand::distributions::Uniform::new(0.0, 1.0);
         for _ in 0..self.order {
-            // add noise at each step, then normalize
-            a *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
-            b *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
-            c *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
-            d *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
-
-            let s = a + b + c + d;
-            a /= s;
-            b /= s;
-            c /= s;
-            // ensure the probabilities add to 1
-            d = 1. - a - b - c;
-
             let p = distribution.sample(&mut self.gen);
             if p < a {}
             else if p < a + b {
@@ -54,6 +44,18 @@ impl RMATGraph {
                 v += step;
             }
             step >>= 1;
+
+            // add noise at each step, then normalize
+            a *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
+            b *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
+            c *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
+            d *= 1. - self.fuzz + 2. * self.fuzz * distribution.sample(&mut self.gen);
+            let s = a + b + c + d;
+            a /= s;
+            b /= s;
+            c /= s;
+            // ensure the probabilities add to 1
+            d = 1. - a - b - c;
         }
         if !self.directed {
             return Edge(usize::min(u, v), usize::max(u, v));
@@ -62,22 +64,22 @@ impl RMATGraph {
     }
 }
 
-impl IntoIterator for RMATGraph {
+impl<T> IntoIterator for RMATGraph<T> where T: CloneSeedableRng {
     type Item = Edge;
-    type IntoIter = RMATIter;
+    type IntoIter = RMATIter<T>;
     fn into_iter(mut self) -> Self::IntoIter {
-        self.gen = SmallRng::seed_from_u64(self.seed);
+        self.gen = T::seed_from_u64(self.seed);
         RMATIter {graph: self, next_edge: None, count: 0}
     }
 }
 
-pub struct RMATIter {
-    graph: RMATGraph,
+pub struct RMATIter<T> {
+    graph: RMATGraph<T>,
     next_edge: Option<Edge>,
     count: usize
 }
 
-impl Iterator for RMATIter {
+impl<T: CloneSeedableRng> Iterator for RMATIter <T> {
     type Item = Edge;
     fn next(&mut self) -> Option<Self::Item> {
         if self.count > self.graph.edge_count {
