@@ -72,7 +72,7 @@ impl CompressedSparseRows {
 
 fn main() {
     /////////////////////////////
-    /// Coverts a vec to CSR ///
+    // Coverts a vec to CSR
     ///////////////////////////
 
     let rows: Vec<Vec<u64>> = vec![
@@ -95,7 +95,7 @@ fn main() {
 
     
     /////////////////////////////
-    /// Coverts edges to CSR ///
+    // Coverts edges to CSR
     ///////////////////////////
 
     let edge_list = vec![
@@ -113,7 +113,7 @@ fn main() {
 
 
     ///////////////////////////////
-    /// Converts CSR to matrix ///
+    // Converts CSR to matrix
     /////////////////////////////
 
     let csr = CompressedSparseRows {

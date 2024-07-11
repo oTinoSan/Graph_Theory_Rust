@@ -344,6 +344,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "compressed_sparse_rows"
+version = "0.1.0"
+dependencies = [
+ "array2d",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -722,7 +729,7 @@ version = "0.1.0"
 dependencies = [
  "array2d",
  "async-trait",
- "lamellar",
+ "lamellar 0.6.1",
  "rayon",
 ]
 
@@ -874,6 +881,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
 dependencies = [
  "log",
+]
+
+[[package]]
+name = "lamellar"
+version = "0.1.0"
+dependencies = [
+ "lamellar 0.6.1",
 ]
 
 [[package]]
@@ -1509,6 +1523,13 @@ dependencies = [
  "nix",
  "rand",
  "win-sys",
+]
+
+[[package]]
+name = "shiloach_vishkin"
+version = "0.1.0"
+dependencies = [
+ "compressed_sparse_rows",
 ]
 
 [[package]]

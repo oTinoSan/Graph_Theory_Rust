@@ -1,3 +1,11 @@
+[workspace]
+
+members = [
+    "lamellar",
+    "compressed_sparse_rows", "shiloach_vishkin",
+]
+
+
 [package]
 name = "graph-exploration"
 version = "0.1.0"
