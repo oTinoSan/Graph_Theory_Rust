@@ -74,13 +74,6 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
         self_clone.reset_gen();
         RMATIter {graph: self_clone, next_edge: None, count: 0}
     }
-
-    pub fn unbounded_iter(&self) -> RMATIterUnbounded<T> {
-        // return a non-consuming unbounded iterator over the edges this graph can generate
-        let mut self_clone = self.clone();
-        self_clone.reset_gen();
-        RMATIterUnbounded {graph: self_clone, next_edge: None}
-    }
 }
 
 impl<T> IntoIterator for RMATGraph<T> where T: CloneSeedableRng {
@@ -105,27 +98,6 @@ impl<T: CloneSeedableRng> Iterator for RMATIter <T> {
             return None;
         }
         self.count += 1;
-        if let Some(e) = self.next_edge {
-            self.next_edge = None;
-            Some(e)
-        } else if self.graph.directed {
-            Some(self.graph.generate_edge())
-        } else {
-            let Edge(u, v) = self.graph.generate_edge();
-            self.next_edge = Some(Edge(v, u));
-            Some(Edge(u, v))
-        }
-    }
-}
-
-pub struct RMATIterUnbounded<T> {
-    graph: RMATGraph<T>,
-    next_edge: Option<Edge>
-}
-
-impl<T: CloneSeedableRng> Iterator for RMATIterUnbounded<T> {
-    type Item = Edge;
-    fn next(&mut self) -> Option<Self::Item> {
         if let Some(e) = self.next_edge {
             self.next_edge = None;
             Some(e)

@@ -51,13 +51,6 @@ where
     pub fn iter(&self) -> RMATIter<T> {
         self.generator.iter()
     }
-
-    pub fn create_edge_array(&self) -> UnsafeArray<Edge> {
-        let edges: UnsafeArray<Edge> = UnsafeArray::new(self.team.clone(), self.global_edge_count, Distribution::Cyclic);
-        let local = unsafe {edges.local_as_mut_slice()};
-        local.iter_mut().zip(self.generator.unbounded_iter()).for_each(|(elem, edge)| *elem = edge);
-        edges
-    }
 }
 
 impl <T: CloneSeedableRng> IntoIterator for DistRMAT<T> {
