@@ -44,14 +44,15 @@ impl LamellarAM for StochasticHook {
                 let _ = lamellar::world.exec_am_pe(remote_pe, StochasticHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, v_parent: self.v_parent, v_grandparent: self.v_grandparent, u_parent: Some(u_parent)});
             },
             (Some(v_parent), _, _) => {
-                // find v_grandparent, then launch am to find u_parent
+                // find v_grandparent, then launch ams to find u_parent and perform aggressive hooking
                 let (_, local_index) = self.parents.pe_and_offset_for_global_index(v_parent as usize).unwrap();
                 let v_grandparent;
                 unsafe {
                     v_grandparent = self.parents.local_as_slice()[local_index];
                 }
-                let (remote_pe, _) = self.parents.pe_and_offset_for_global_index(self.u as usize).unwrap();
+                let (remote_pe, local_index) = self.parents.pe_and_offset_for_global_index(self.u as usize).unwrap();
                 let _ = lamellar::world.exec_am_pe(remote_pe, StochasticHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, v_parent: self.v_parent, v_grandparent: Some(v_grandparent), u_parent: None});
+                let _ = lamellar::world.exec_am_pe(remote_pe, AggressiveHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v_grandparent, local_index});
             },
             (_, _, _) => {
                 // find v_parent, then launch am to find v_grandparent
@@ -74,47 +75,22 @@ struct AggressiveHook {
     parents: UnsafeArray<u64>,
     new_parents: UnsafeArray<u64>,
     u: u64,
-    v: u64,
-    v_parent: Option<u64>,
-    v_grandparent: Option<u64>,
+    v_grandparent: u64,
     local_index: usize,
 }
 
 #[lamellar::am]
 impl LamellarAM for AggressiveHook {
     async fn exec(&self) {
-        match (self.v_parent, self.v_grandparent) {
-            (None, None) => {
-                // find v_parent, then launch am to find v_grandparent
-                let v_parent;
-                unsafe {
-                    v_parent = self.parents.local_as_slice()[self.local_index];
-                }
-                let (remote_pe, local_index) = self.parents.pe_and_offset_for_global_index(v_parent as usize).unwrap();
-                let _ = lamellar::world.exec_am_pe(remote_pe, AggressiveHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, v_parent: Some(v_parent), v_grandparent: None, local_index});
-            },
-            (Some(_), None) => {
-                // find v_grandparent, then launch am to compare to u_parent
-                let v_grandparent;
-                unsafe {
-                    v_grandparent = self.parents.local_as_slice()[self.local_index];
-                }
-                let (remote_pe, local_index) = self.parents.pe_and_offset_for_global_index(self.u as usize).unwrap();
-                let _ = lamellar::world.exec_am_pe(remote_pe, AggressiveHook {parents: self.parents.clone(), new_parents: self.new_parents.clone(), u: self.u, v: self.v, v_parent: self.v_parent, v_grandparent: Some(v_grandparent), local_index});
-            },
-            (Some(_), Some(v_grandparent)) => {
-                // find u_parent, then compare to v_grandparent
-                let u_parent;
-                unsafe {
-                    u_parent = self.new_parents.local_as_slice()[self.local_index];
-                }
-                if v_grandparent < u_parent {
-                    unsafe {
-                        self.new_parents.local_as_mut_slice()[self.local_index] = v_grandparent;
-                    }
-                }
-            },
-            _ => {}
+        // find u_parent, then compare to v_grandparent
+        let u_parent;
+        unsafe {
+            u_parent = self.new_parents.local_as_slice()[self.local_index];
+        }
+        if self.v_grandparent < u_parent {
+            unsafe {
+                self.new_parents.local_as_mut_slice()[self.local_index] = self.v_grandparent;
+            }
         }
     }
 }
@@ -257,19 +233,14 @@ pub fn lamellar_main() {
 
         // stochastic hooking: for every edge (u, v)
         // if parents[parents[v]] < new_parents[parents[u]]: new_parents[parents[u]] = parents[parents[v]]
+        // aggressive hooking: for every edge (u, v)
+        // if parents[parents[v]] < new_parents[u]: new_parents[u] = parents[parents[v]]
+        // messages for aggressive hooking will be launched by stochastic hook
 
         for &Edge(u, v) in edges.local_as_slice() {
             let (remote_pe, _) = old_parents.pe_and_offset_for_global_index(v as usize).unwrap();
             // println!("Edge ({}, {}) launching message to find parent of {} on pe {}", u, v, v, remote_pe);
             let _ = world.exec_am_pe(remote_pe, StochasticHook {parents: old_parents.clone(), new_parents: new_parents.clone(), u, v, v_parent: None, v_grandparent: None, u_parent: None});
-        }
-
-        // aggressive hooking: for every edge (u, v)
-        // if parents[parents[v]] < new_parents[u]: new_parents[u] = parents[parents[v]]
-
-        for &Edge(u, v) in edges.local_as_slice() {
-            let (remote_pe, local_index) = old_parents.pe_and_offset_for_global_index(v as usize).unwrap();
-            let _ = world.exec_am_pe(remote_pe, AggressiveHook {parents: old_parents.clone(), new_parents: new_parents.clone(), u, v, v_parent: None, v_grandparent: None, local_index});
         }
 
         // shortcutting: for every vertex u
