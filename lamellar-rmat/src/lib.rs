@@ -1,4 +1,4 @@
-use lamellar::{LamellarEnv, LamellarTeam, LamellarWorld, array::prelude::*};
+use lamellar::{LamellarEnv, LamellarTeam, LamellarWorld};
 use rmat_generator::{CloneSeedableRng, RMATGraph, RMATIter};
 use dist_structs::Edge;
 use std::sync::Arc;
