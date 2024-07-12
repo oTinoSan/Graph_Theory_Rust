@@ -33,13 +33,13 @@ where
                 } else {
                     None
                 },
-                edge_count / team.num_pes() + {
-                    if team.my_pe() < edge_count % team.num_pes() {
+                edge_count / {if directed {1} else {2}} / team.num_pes() + {
+                    if team.my_pe() < (edge_count / {if directed {1} else {2}}) % team.num_pes() {
                         1
                     } else {
                         0
                     }
-                },
+                } * {if directed {1} else {2}},
                 partition,
                 directed,
             ),
