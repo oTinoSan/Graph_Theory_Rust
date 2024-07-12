@@ -17,11 +17,13 @@ pub struct RMATGraph <T> {
 
 impl<T> RMATGraph <T> where T: CloneSeedableRng{
     pub fn new(order: usize, fuzz: f64, seed: Option<u64>, edge_count: usize, partition: [f64; 4], directed: bool) -> Self {
+        // if the seed is not given, choose a random one
         let seed = seed.unwrap_or_else(|| thread_rng().next_u64());
         Self {order, fuzz, seed, gen: T::seed_from_u64(seed), edge_count, partition, directed}
     }
 
     pub fn reset_gen(&mut self) {
+        // set the generator back to the starting state
         self.gen = T::seed_from_u64(self.seed);
     }
 
@@ -67,12 +69,14 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
     }
 
     pub fn iter(&self) -> RMATIter<T> {
+        // return a non-consuming iterator over the edges this graph will generate
         let mut self_clone = self.clone();
         self_clone.reset_gen();
         RMATIter {graph: self_clone, next_edge: None, count: 0}
     }
 
     pub fn unbounded_iter(&self) -> RMATIterUnbounded<T> {
+        // return a non-consuming unbounded iterator over the edges this graph can generate
         let mut self_clone = self.clone();
         self_clone.reset_gen();
         RMATIterUnbounded {graph: self_clone, next_edge: None}
