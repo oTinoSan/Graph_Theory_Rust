@@ -1,16 +1,5 @@
 use lamellar::array::prelude::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps)]
-struct Edge (u64, u64);
-
-impl lamellar::memregion::Dist for Edge {}
-
-impl From<(u64, u64)> for Edge {
-    fn from(e: (u64, u64)) -> Self {
-        Self(e.0, e.1)
-    }
-}
+use dist_structs::Edge;
 
 /// Active message for processing the stochastic hook step of FastSV
 #[lamellar::AmData(Clone, Debug)]

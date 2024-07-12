@@ -1,5 +1,5 @@
 [workspace]
-members = ["lamellar-rmat","rmat-generator"]
+members = [ "dist-structs","lamellar-rmat","rmat-generator"]
 
 [package]
 name = "graph-theory"
@@ -10,5 +10,6 @@ edition = "2021"
 array2d = "0.3.2"
 async-trait = "0.1.80"
 csv = "1.3.0"
+dist-structs = { version = "0.1.0", path = "dist-structs" }
 lamellar = "0.6.1"
-serde = "1.0.203"
+serde = "1.0.204"

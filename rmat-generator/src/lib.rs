@@ -1,7 +1,5 @@
 use rand::{distributions::Distribution, thread_rng, RngCore, SeedableRng};
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Edge(pub usize, pub usize);
+use dist_structs::Edge;
 
 pub trait CloneSeedableRng: Clone + RngCore + SeedableRng {}
 impl<T: Clone + RngCore + SeedableRng> CloneSeedableRng for T {}
@@ -63,9 +61,9 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
             d = 1. - a - b - c;
         }
         if !self.directed {
-            return Edge(usize::min(u, v), usize::max(u, v));
+            return Edge(usize::min(u, v).try_into().unwrap(), usize::max(u, v).try_into().unwrap());
         }
-        Edge(u, v)
+        Edge(u.try_into().unwrap(), v.try_into().unwrap())
     }
 
     pub fn iter(&self) -> RMATIter<T> {

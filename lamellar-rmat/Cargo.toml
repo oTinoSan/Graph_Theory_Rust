@@ -1,8 +1,9 @@
 [package]
-name = "rmat-generator"
+name = "lamellar-rmat"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 dist-structs = { version = "0.1.0", path = "../dist-structs" }
-rand = {version = "0.8.5", features = ["small_rng"]}
+lamellar = "0.6.1"
+rmat-generator = {path = "../rmat-generator"}
