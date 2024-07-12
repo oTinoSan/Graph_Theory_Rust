@@ -23,7 +23,12 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
         Self {order, fuzz, seed, gen: T::seed_from_u64(seed), edge_count, partition, directed}
     }
 
+    pub fn reset_gen(&mut self) {
+        self.gen = T::seed_from_u64(self.seed);
+    }
+
     pub fn generate_edge(&mut self) -> Edge {
+        // cribbed from ygm rmat generator
         let mut a = self.partition[0];
         let mut b = self.partition[1];
         let mut c = self.partition[2];
@@ -62,13 +67,19 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
         }
         Edge(u, v)
     }
+
+    pub fn iter(&self) -> RMATIter<T> {
+        let mut self_clone = self.clone();
+        self_clone.reset_gen();
+        RMATIter {graph: self_clone, next_edge: None, count: 0}
+    }
 }
 
 impl<T> IntoIterator for RMATGraph<T> where T: CloneSeedableRng {
     type Item = Edge;
     type IntoIter = RMATIter<T>;
     fn into_iter(mut self) -> Self::IntoIter {
-        self.gen = T::seed_from_u64(self.seed);
+        self.reset_gen();
         RMATIter {graph: self, next_edge: None, count: 0}
     }
 }
