@@ -94,7 +94,7 @@ pub struct RMATIter<T> {
 impl<T: CloneSeedableRng> Iterator for RMATIter <T> {
     type Item = Edge;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.count > self.graph.edge_count {
+        if self.count >= self.graph.edge_count {
             return None;
         }
         self.count += 1;
