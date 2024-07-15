@@ -5,4 +5,5 @@ members = [
     "compressed_sparse_rows", 
     "shiloach_vishkin", 
     "threads_exercises",
+    "sssp_delta",
 ]
