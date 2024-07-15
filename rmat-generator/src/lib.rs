@@ -1,10 +1,8 @@
-use rand::{distributions::Distribution, thread_rng, RngCore, SeedableRng};
+use rand::{distributions::Distribution, thread_rng};
 use dist_structs::Edge;
+pub use rand::{RngCore, SeedableRng};
 
-pub trait CloneSeedableRng: Clone + RngCore + SeedableRng {}
-impl<T: Clone + RngCore + SeedableRng> CloneSeedableRng for T {}
-
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct RMATGraph <T> {
     pub order: usize,
     fuzz: f64,
@@ -15,7 +13,7 @@ pub struct RMATGraph <T> {
     directed: bool,
 }
 
-impl<T> RMATGraph <T> where T: CloneSeedableRng{
+impl<T> RMATGraph <T> where T: SeedableRng + RngCore{
     pub fn new(order: usize, fuzz: f64, seed: Option<u64>, edge_count: usize, partition: [f64; 4], directed: bool) -> Self {
         // if the seed is not given, choose a random one
         let seed = seed.unwrap_or_else(|| thread_rng().next_u64());
@@ -70,13 +68,12 @@ impl<T> RMATGraph <T> where T: CloneSeedableRng{
 
     pub fn iter(&self) -> RMATIter<T> {
         // return a non-consuming iterator over the edges this graph will generate
-        let mut self_clone = self.clone();
-        self_clone.reset_gen();
+        let self_clone = RMATGraph::<T> {gen: T::seed_from_u64(self.seed), .. *self};
         RMATIter {graph: self_clone, next_edge: None, count: 0}
     }
 }
 
-impl<T> IntoIterator for RMATGraph<T> where T: CloneSeedableRng {
+impl<T> IntoIterator for RMATGraph<T> where T: SeedableRng + RngCore {
     type Item = Edge;
     type IntoIter = RMATIter<T>;
     fn into_iter(mut self) -> Self::IntoIter {
@@ -91,7 +88,7 @@ pub struct RMATIter<T> {
     count: usize
 }
 
-impl<T: CloneSeedableRng> Iterator for RMATIter <T> {
+impl<T: SeedableRng + RngCore> Iterator for RMATIter <T> {
     type Item = Edge;
     fn next(&mut self) -> Option<Self::Item> {
         if self.count >= self.graph.edge_count {

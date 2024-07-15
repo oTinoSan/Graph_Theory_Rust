@@ -1,9 +1,9 @@
 use lamellar::{LamellarEnv, LamellarTeam, LamellarWorld};
-use rmat_generator::{CloneSeedableRng, RMATGraph, RMATIter};
+use rmat_generator::{RMATGraph, RMATIter, RngCore, SeedableRng};
 use dist_structs::Edge;
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DistRMAT<T> {
     generator: RMATGraph<T>,
     team: Arc<LamellarTeam>,
@@ -12,7 +12,7 @@ pub struct DistRMAT<T> {
 
 impl<T> DistRMAT<T>
 where
-    T: CloneSeedableRng,
+    T: SeedableRng + RngCore,
 {
     pub fn new(
         world: &LamellarWorld,
@@ -53,7 +53,7 @@ where
     }
 }
 
-impl <T: CloneSeedableRng> IntoIterator for DistRMAT<T> {
+impl <T: SeedableRng + RngCore> IntoIterator for DistRMAT<T> {
     type Item = Edge;
     type IntoIter = RMATIter<T>;
     fn into_iter(self) -> Self::IntoIter {
