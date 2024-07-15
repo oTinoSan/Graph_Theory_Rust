@@ -61,7 +61,7 @@ fn main() {
             let edges: Vec<_> = world.block_on(world.exec_am_all(Yoink {gen})).into_iter().flatten().collect();
             println!("Found {} total edges at pe {}", edges.len(), my_pe);
             println!("Took {:?}", start.elapsed());
-            let f = std::fs::File::options().write(true).truncate(true).create(true).open("graph.json").unwrap();
+            let f = std::fs::File::options().write(true).truncate(true).create(true).open(filename + ".json").unwrap();
             let mut writer = std::io::BufWriter::new(f);
             serde_json::to_writer_pretty(&mut writer, &edges).unwrap();
             writer.flush().unwrap();
