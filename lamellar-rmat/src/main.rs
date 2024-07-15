@@ -22,7 +22,7 @@ impl LamellarAm for Yoink {
 struct Cli {
     order: usize,
     edge_factor: usize,
-    #[arg(short, long, default_value_t=0.1)]
+    #[arg(long, default_value_t=0.1)]
     fuzz: f64,
     #[arg(short, long)]
     seed: Option<u64>,
@@ -30,7 +30,7 @@ struct Cli {
     directed: bool,
     #[arg(short, long, num_args=4)]
     partition: Option<Vec<f64>>,
-    #[arg(short, long)]
+    #[arg(long)]
     split_output: bool,
     #[arg(short, long)]
     filename: Option<String>
