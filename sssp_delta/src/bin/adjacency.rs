@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
-use sssp_delta::dist_hash_maps::*;
+use sssp_delta::dist_hash_maps::{self, *};
 
 #[derive(Serialize, Deserialize)]
 struct AdjList {
@@ -13,20 +13,14 @@ struct AdjList {
     tent: f32,
 }
 
-impl AdjList {
-    fn new() -> Self {
-        AdjList {
-            edges: Vec::new(),
-            tent: f32::INFINITY,
-        }
-    }
-}
-
 async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut f32, path: &str) -> io::Result<()> {
+
+    let inf = f32::INFINITY;
+    let mut max: f32 = 0.0;
+
     let file = File::open(path)?;
     let reader = BufReader::new(file);
 
-    let mut max: f32 = 0.0;
     let mut curr_node: usize = 0;
     let mut adj: Vec<(usize, f32)> = Vec::new();
 
@@ -36,28 +30,32 @@ async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut
         let row: Vec<&str> = line.split(',').collect();
 
         if row.len() < 3 {
-            continue; // Skip malformed lines
+            continue; 
         }
 
         let node: usize = row[0].parse().unwrap_or(0);
         let edge: usize = row[1].parse().unwrap_or(0);
         let weight: f32 = row[2].parse().unwrap_or(0.0);
 
-        if node != curr_node {
-            if world.my_pe() == curr_node % world.num_pes() {
-                let insert = AdjList {
-                    edges: adj.clone(),
-                    tent: f32::INFINITY,
-                };
-                mat.insert(curr_node, insert).await;
 
-                max = max.max(weight);
+        // Load adjacency row into matrix
+        if row[0].parse::<usize>().unwrap_or_default() != curr_node {
+            if world.my_pe() == curr_node % world.num_pes() {
+                let insert = (adj.clone(), 
+                f32::INFINITY); // Assuming `Inf` is f32::INFINITY
+                mat.add(curr_node, insert); // Assuming a synchronous `insert` instead of `async_insert`
+
+                // Update maxs
+                if let Ok(value) = row[2].parse::<i32>() {
+                    if max < value {
+                        max = value;
+                    }
+                }
             }
 
-            adj.clear();
-            curr_node = node;
-        }
-
+    adj.clear();
+    curr_node += 1;
+}
         adj.push((edge, weight));
     }
 
