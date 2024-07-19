@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use sssp_delta::dist_hash_maps::{self, *};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Serialize, Deserialize)]
 struct AdjList {
@@ -79,13 +80,27 @@ async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut
     Ok(())
 }
 
-// Main function to initialize Lamellar and call `get_graph`
+
 #[lamellar::am]
-fn main() {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let world = LamellarWorldBuilder::new().build();
     let mat = LamellarHashMap::new(world.clone());
     let max_weight = LamellarAtomic::new(0.0);
 
-    let path = Path::new("data.csv");
-    get_graph(world, &mat, max_weight, path).await.unwrap();
+    // Accepting file path as a command-line argument
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <path_to_data_csv>", args[0]);
+        std::process::exit(1);
+    }
+    let path = Path::new(&args[1]);
+
+    // Proper error handling
+    if let Err(e) = get_graph(world, &mat, max_weight, path).await {
+        eprintln!("Error processing graph: {}", e);
+        return Err(e);
+    }
+
+    Ok(())
 }
