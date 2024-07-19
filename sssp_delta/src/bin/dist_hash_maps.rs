@@ -106,23 +106,15 @@ impl LamellarAM for DistHashMapOp {
 }
 
 fn main() {
-    println!("0");
     let world = lamellar::LamellarWorldBuilder::new().build();
-    println!("1");
     let my_pe = world.my_pe();
-    println!("2");
     let num_pes = world.num_pes();
-    println!("3");
     world.barrier();
-    println!("4");
     let distributed_map = DistHashMap::new(&world, num_pes);
-    println!("5");
     let adj_list = AdjList {
         edges: vec![(1, 0.5), (2, 1.2), (3, 0.8)],
         tent: 2.5,
     };
-    println!("6");
-    println!("{}", adj_list);
 
     for i in 0..10 {
         // we can ignore the 'unused' result here because we call 'wait_all' below, otherwise to ensure each request completed we could use 'block_on'
