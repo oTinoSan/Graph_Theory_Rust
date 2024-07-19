@@ -2,16 +2,21 @@ use lamellar::active_messaging::prelude::*;
 use lamellar::darc::prelude::*;
 use serde::{Deserialize, Serialize};
 use lamellar::LamellarTeam;
-
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 
 // edge: (vertex, weight)
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct AdjList {
+pub struct AdjList {
     edges: Vec<(usize, f64)>,
     tent: f32,
+}
+
+impl std::fmt::Display for AdjList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "AdjList {{ vertex, weight: {:?}, tent: {} }}", self.edges, self.tent)
+    }
 }
 
 // data: <node, (tent, (vertex, weight)>
@@ -36,7 +41,7 @@ impl DistHashMap {
         k as usize % self.num_pes
     }
 
-    pub fn add(&self, k: i32, v: DistHashMap) -> impl Future {
+    pub fn add(&self, k: i32, v: AdjList) -> impl Future {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -72,7 +77,7 @@ enum DistCmd {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
-    Add(i32, AdjList),
+    Add,
     Get(i32),
 }
 
@@ -85,16 +90,16 @@ struct DistHashMapOp {
 #[am]
 impl LamellarAM for DistHashMapOp {
     async fn exec(self) -> DistCmdResult {
-        match self.cmd {
+        match &self.cmd {
             DistCmd::Add(k, v) => {
-                self.data.write().await.insert(k, v);
+                self.data.write().await.insert(*k, v.clone());
                 DistCmdResult::Add
             }
             DistCmd::Get(k) => {
                 let data = self.data.read().await;
-                let v = data.get(&k);
-                println!("{}", v.unwrap());
-                DistCmdResult::Get(k)
+                let v = data.get(&k).cloned();
+                println!("{:?}", v.unwrap());
+                DistCmdResult::Get(*k)
             }
         }
     }
@@ -107,10 +112,18 @@ fn main() {
     world.barrier();
     let distributed_map = DistHashMap::new(&world, num_pes);
 
+    let adj_list = AdjList {
+        edges: vec![(1, 0.5), (2, 1.2), (3, 0.8)],
+        tent: 2.5,
+    };
+
+    println!("{}", adj_list);
+
     for i in 0..10 {
         // we can ignore the 'unused' result here because we call 'wait_all' below, otherwise to ensure each request completed we could use 'block_on'
-        distributed_map.add(i, i);
-    }
+        let _ = distributed_map.add(i, adj_list.clone());
+    };
+
     world.wait_all();
     world.barrier();
     let map_clone = distributed_map.clone();
