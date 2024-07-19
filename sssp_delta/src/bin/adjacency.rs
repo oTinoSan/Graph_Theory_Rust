@@ -87,5 +87,5 @@ fn main() {
     let max_weight = LamellarAtomic::new(0.0);
 
     let path = Path::new("data.csv");
-    get_graph(world, &mat, &max_weight, path).await.unwrap();
+    get_graph(world, &mat, max_weight, path).await.unwrap();
 }

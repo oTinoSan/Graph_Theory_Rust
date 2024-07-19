@@ -57,6 +57,7 @@ impl DistHashMap {
 enum DistCmd {
     Add(i32, i32),
     Get(i32),
+    Visit(i32, VisitOp),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -135,12 +135,7 @@ fn main() {
     // complete a source relaxation --------------------------------------------------------------------------------------
     // relax the source
     // Asynchronous visit to the source node
-    world.exec_am_all(move || {
-        // Assuming `map` is accessible and has a method to asynchronously visit and modify elements
-        distributed_map.async_visit(0, |source_info| {
-            source_info.tent = 0; // Modify the source_info as needed
-        });
-    });
+
 
     // Asynchronous insert into the first bucket
     world.exec_am_all(move || {
@@ -171,6 +166,18 @@ pub struct DistHashMap {
 }
 
 impl DistHashMap {
+
+    pub fn async_insert(&self, k: i32, v: i32) -> impl Future {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::AsyncInsert(k, v),
+            },
+        )
+    }
+
     pub fn new(world: &LamellarWorld,  num_pes: usize) -> Self {
         let team = world.team();
         DistHashMap {
@@ -214,6 +221,7 @@ impl DistHashMap {
 enum DistCmd {
     Add(i32, i32),
     Get(i32),
+    AsyncVisit(i32, i32), 
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,6 +250,17 @@ impl LamellarAM for DistHashMapOp {
                 println!("{}", v.unwrap());
                 DistCmdResult::Get(k)
             }
+            DistCmd::AsyncVisit(k, v) => {
+                let mut data = self.data.write().await;
+                if let Some(existing) = data.get_mut(&k) {
+                    // if the key exists, modify its value
+                    *existing = v;
+                } else {
+                    // if the key does not exist, insert it
+                    data.insert(k, v);
+                }
+                DistCmdResult::Add // indicate a successful insert or modification
+            },
         }
     }
 }
@@ -273,3 +292,4 @@ fn main() {
         local_data
     );
 }
+
