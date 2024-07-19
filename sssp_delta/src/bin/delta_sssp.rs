@@ -14,7 +14,7 @@ use sssp_delta::dist_hash_maps::*;
 // arg[3] = delta
 
 struct AdjList {
-    edges: Vec<(usize, f32)>,
+    edges: Vec<(usize, f64)>,
     tent: f32,
 }
 

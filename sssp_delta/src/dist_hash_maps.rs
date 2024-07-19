@@ -6,11 +6,19 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 
+// edge: (vertex, weight)
+#[derive(Clone, Debug)]
+struct AdjList {
+    edges: Vec<(usize, f64)>,
+    tent: f32,
+}
+
+// data: <node, (tent, (vertex, weight)>
 #[derive(Clone)]
 pub struct DistHashMap {
     num_pes: usize,
     team: Arc<LamellarTeam>,
-    data: LocalRwDarc<HashMap<i32, i32>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
+    data: LocalRwDarc<HashMap<i32, AdjList>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
 }
 
 impl DistHashMap {
@@ -26,6 +34,7 @@ impl DistHashMap {
     fn get_key_pe(&self, k: i32) -> usize {
         k as usize % self.num_pes
     }
+
     pub fn add(&self, k: i32, v: i32) -> impl Future {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
@@ -44,6 +53,17 @@ impl DistHashMap {
             DistHashMapOp {
                 data: self.data.clone(),
                 cmd: DistCmd::Get(k),
+            },
+        )
+    }
+
+    pub fn add(&self, k: i32, v: i32) -> impl Future {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Add(k, v),
             },
         )
     }
@@ -68,7 +88,7 @@ pub enum DistCmdResult {
 
 #[AmData(Debug, Clone)]
 struct DistHashMapOp {
-    data: LocalRwDarc<HashMap<i32, i32>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
+    data: LocalRwDarc<HashMap<i32, AdjList>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
     cmd: DistCmd,
 }
 

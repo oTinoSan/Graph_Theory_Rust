@@ -10,7 +10,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Serialize, Deserialize)]
 struct AdjList {
-    edges: Vec<(usize, f32)>,
+    edges: Vec<(usize, f64)>,
     tent: f32,
 }
 
