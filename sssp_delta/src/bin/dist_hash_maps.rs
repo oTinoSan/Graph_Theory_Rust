@@ -106,6 +106,7 @@ impl LamellarAM for DistHashMapOp {
 }
 
 fn main() {
+    println!("0");
     let world = LamellarWorldBuilder::new().build();
     println!("1");
     let my_pe = world.my_pe();
