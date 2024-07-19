@@ -1,5 +1,4 @@
 use graphs::*;
-use std::env;
 
 fn main() {
     println!("Hello, graphs!");

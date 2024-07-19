@@ -33,14 +33,11 @@ pub fn shiloach_vishkin(graph: Csr) -> Vec<usize> {
             }
         }
 
-
         for index in 0..graph.rof_offset.len() - 1{
             while component[index] != component[component[index]]{
                 component[index] = component[component[index]];
             }
         }
-
-
 
     }
 
