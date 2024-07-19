@@ -1,20 +1,21 @@
 use lamellar::active_messaging::prelude::*;
 use lamellar::darc::prelude::*;
 use serde::{Deserialize, Serialize};
+use lamellar::LamellarTeam;
 
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 
 // edge: (vertex, weight)
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct AdjList {
     edges: Vec<(usize, f64)>,
     tent: f32,
 }
 
 // data: <node, (tent, (vertex, weight)>
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DistHashMap {
     num_pes: usize,
     team: Arc<LamellarTeam>,
@@ -35,7 +36,7 @@ impl DistHashMap {
         k as usize % self.num_pes
     }
 
-    pub fn add(&self, k: i32, v: i32) -> impl Future {
+    pub fn add(&self, k: i32, v: DistHashMap) -> impl Future {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -57,16 +58,6 @@ impl DistHashMap {
         )
     }
 
-    pub fn add(&self, k: i32, v: i32) -> impl Future {
-        let dest_pe = self.get_key_pe(k);
-        self.team.exec_am_pe(
-            dest_pe,
-            DistHashMapOp {
-                data: self.data.clone(),
-                cmd: DistCmd::Add(k, v),
-            },
-        )
-    }
 }
 
 // this is one way we can implement commands for the distributed hashmap
@@ -75,14 +66,13 @@ impl DistHashMap {
 // #[AmData(Debug, Clone)] eventually we will be able to do this... instead  derive serialize and deserialize directly with serde
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DistCmd {
-    Add(i32, i32),
+    Add(i32, AdjList),
     Get(i32),
-    Visit(i32, VisitOp),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
-    Add,
+    Add(i32, AdjList),
     Get(i32),
 }
 
