@@ -56,7 +56,7 @@ impl LamellarAM for StochasticHook {
             },
             (_, _, _) => {
                 // find v_parent, then launch am to find v_grandparent
-                let (pe, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
+                let (_pe, local_index) = self.parents.pe_and_offset_for_global_index(self.v as usize).unwrap();
                 // println!("PE{} accessing data from PE{} at local index {}, global index {}", lamellar::current_pe, pe, local_index, self.v);
                 let v_parent;
                 unsafe {
