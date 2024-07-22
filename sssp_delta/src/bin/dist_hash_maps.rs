@@ -158,4 +158,11 @@ fn main() {
         "[{my_pe}] local data: {:?}",
         local_data
     );
+
+    let n_tent = 5.0;
+    world.block_on(async {
+        distributed_map.visit(9, n_tent).await;
+        println!("{:?}", distributed_map.get(9).await);
+    });
+
 }
