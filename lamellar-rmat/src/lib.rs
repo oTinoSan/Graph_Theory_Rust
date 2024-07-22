@@ -1,6 +1,6 @@
 use lamellar::{LamellarEnv, LamellarTeam, LamellarWorld};
 use rmat_generator::{RMATGraph, RMATIter, RngCore, SeedableRng};
-use dist_structs::Edge;
+use dist_structs::{Edge, EdgeType};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -22,6 +22,7 @@ where
         edge_count: usize,
         partition: [f64; 4],
         directed: bool,
+        weighted: bool,
     ) -> Self {
         let team = world.team();
         Self {
@@ -42,6 +43,7 @@ where
                 }) * {if directed {1} else {2}},
                 partition,
                 directed,
+                weighted,
             ),
             team,
             global_edge_count: edge_count,
@@ -54,7 +56,7 @@ where
 }
 
 impl <T: SeedableRng + RngCore> IntoIterator for DistRMAT<T> {
-    type Item = Edge;
+    type Item = EdgeType;
     type IntoIter = RMATIter<T>;
     fn into_iter(self) -> Self::IntoIter {
         self.generator.into_iter()

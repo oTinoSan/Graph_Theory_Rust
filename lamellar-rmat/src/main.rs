@@ -11,7 +11,7 @@ struct Yoink {
 
 #[lamellar::am]
 impl LamellarAm for Yoink {
-    async fn exec(&self) -> Vec<dist_structs::Edge> {
+    async fn exec(&self) -> Vec<dist_structs::EdgeType> {
         self.gen.iter().collect::<Vec<_>>()
     }
 }
@@ -28,6 +28,8 @@ struct Cli {
     seed: Option<u64>,
     #[arg(short, long)]
     directed: bool,
+    #[arg(short, long)]
+    weighted: bool,
     #[arg(short, long, num_args=4)]
     partition: Option<Vec<f64>>,
     #[arg(long)]
@@ -46,7 +48,7 @@ fn main() {
     let partition = [partition[0], partition[1], partition[2], partition[3]];
     let filename = cli.filename.unwrap_or_else(|| format!("scale{}_ef{}", cli.order, cli.edge_factor));
 
-    let gen = DistRMAT::<SmallRng>::new(&world, cli.order, cli.fuzz, cli.seed, 2_usize.pow(cli.order as u32) * cli.edge_factor, partition, cli.directed);
+    let gen = DistRMAT::<SmallRng>::new(&world, cli.order, cli.fuzz, cli.seed, 2_usize.pow(cli.order as u32) * cli.edge_factor, partition, cli.directed, cli.weighted);
     let gen = Darc::new(&world, gen).unwrap();
     if cli.split_output {
         let filename = filename + &format!("_{}", my_pe);

@@ -1,3 +1,4 @@
+use std::default;
 use std::hash::{BuildHasherDefault, DefaultHasher, Hash};
 use std::{collections::HashMap, hash::Hasher};
 use std::sync::Arc;
@@ -15,6 +16,19 @@ impl From<(u64, u64)> for Edge {
         Self(e.0, e.1)
     }
 }
+
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default, PartialEq)]
+pub struct WeightedEdge(pub u64, pub u64, pub f64);
+
+impl lamellar::memregion::Dist for WeightedEdge {}
+
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, PartialEq)]
+pub enum EdgeType {
+    Unweighted(Edge),
+    Weighted(WeightedEdge)
+}
+
+impl lamellar::memregion::Dist for EdgeType {}
 
 pub struct DistHashMap<K, V>
 where

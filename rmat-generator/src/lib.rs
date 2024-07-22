@@ -1,5 +1,5 @@
 use rand::{distributions::Distribution, thread_rng};
-use dist_structs::Edge;
+use dist_structs::{Edge, EdgeType, WeightedEdge};
 pub use rand::{RngCore, SeedableRng};
 
 #[derive(Debug)]
@@ -11,13 +11,14 @@ pub struct RMATGraph <T> {
     edge_count: usize,
     partition: [f64; 4],
     directed: bool,
+    weighted: bool,
 }
 
 impl<T> RMATGraph <T> where T: SeedableRng + RngCore{
-    pub fn new(order: usize, fuzz: f64, seed: Option<u64>, edge_count: usize, partition: [f64; 4], directed: bool) -> Self {
+    pub fn new(order: usize, fuzz: f64, seed: Option<u64>, edge_count: usize, partition: [f64; 4], directed: bool, weighted: bool) -> Self {
         // if the seed is not given, choose a random one
         let seed = seed.unwrap_or_else(|| thread_rng().next_u64());
-        Self {order, fuzz, seed, gen: T::seed_from_u64(seed), edge_count, partition, directed}
+        Self {order, fuzz, seed, gen: T::seed_from_u64(seed), edge_count, partition, directed, weighted}
     }
 
     pub fn reset_gen(&mut self) {
@@ -25,7 +26,7 @@ impl<T> RMATGraph <T> where T: SeedableRng + RngCore{
         self.gen = T::seed_from_u64(self.seed);
     }
 
-    pub fn generate_edge(&mut self) -> Edge {
+    pub fn generate_edge(&mut self) -> EdgeType {
         // cribbed from ygm rmat generator
         let mut a = self.partition[0];
         let mut b = self.partition[1];
@@ -60,10 +61,21 @@ impl<T> RMATGraph <T> where T: SeedableRng + RngCore{
             // ensure the probabilities add to 1
             d = 1. - a - b - c;
         }
-        if !self.directed {
-            return Edge(usize::min(u, v).try_into().unwrap(), usize::max(u, v).try_into().unwrap());
+
+        match (self.directed, self.weighted) {
+            (true, true) => {
+                EdgeType::Weighted(WeightedEdge(u, v, distribution.sample(&mut self.gen)))
+            },
+            (true, false) => {
+                EdgeType::Unweighted(Edge(u, v))
+            },
+            (false, true) => {
+                EdgeType::Weighted(WeightedEdge(u.min(v), u.max(v), distribution.sample(&mut self.gen)))
+            },
+            (false, false) => {
+                EdgeType::Unweighted(Edge(u.min(v), u.max(v)))
+            }
         }
-        Edge(u.try_into().unwrap(), v.try_into().unwrap())
     }
 
     pub fn iter(&self) -> RMATIter<T> {
@@ -74,7 +86,7 @@ impl<T> RMATGraph <T> where T: SeedableRng + RngCore{
 }
 
 impl<T> IntoIterator for RMATGraph<T> where T: SeedableRng + RngCore {
-    type Item = Edge;
+    type Item = EdgeType;
     type IntoIter = RMATIter<T>;
     fn into_iter(mut self) -> Self::IntoIter {
         self.reset_gen();
@@ -84,12 +96,12 @@ impl<T> IntoIterator for RMATGraph<T> where T: SeedableRng + RngCore {
 
 pub struct RMATIter<T> {
     graph: RMATGraph<T>,
-    next_edge: Option<Edge>,
+    next_edge: Option<EdgeType>,
     count: usize
 }
 
 impl<T: SeedableRng + RngCore> Iterator for RMATIter <T> {
-    type Item = Edge;
+    type Item = EdgeType;
     fn next(&mut self) -> Option<Self::Item> {
         if self.count >= self.graph.edge_count {
             return None;
@@ -101,9 +113,16 @@ impl<T: SeedableRng + RngCore> Iterator for RMATIter <T> {
         } else if self.graph.directed {
             Some(self.graph.generate_edge())
         } else {
-            let Edge(u, v) = self.graph.generate_edge();
-            self.next_edge = Some(Edge(v, u));
-            Some(Edge(u, v))
+            match self.graph.generate_edge() {
+                EdgeType::Unweighted(Edge(u, v)) => {
+                    self.next_edge = Some(EdgeType::Unweighted(Edge(v, u)));
+                    Some(EdgeType::Unweighted(Edge(u, v)))
+                }
+                EdgeType::Weighted(WeightedEdge(u, v, f)) => {
+                    self.next_edge = Some(EdgeType::Weighted(WeightedEdge(v, u, f)));
+                    Some(EdgeType::Weighted(WeightedEdge(u, v, f)))
+                }
+            }
         }
     }
 }
