@@ -152,6 +152,9 @@ fn main() {
             println!("{}: {:?}", i, map_clone.get(i).await);
         }
     });
+
+
+
  
 
     world.barrier();
