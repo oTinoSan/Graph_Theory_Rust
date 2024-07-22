@@ -70,13 +70,11 @@ fn main() {
         delta = args[3].parse::<f32>().unwrap();
     }
 
+    // compute total elapsed time
     let duration = end.duration_since(beg);
-    // convert duration to microseconds
-    let time = duration.as_micros() as u64; // Ensure it fits into u64
-    // assuming `world` is the communicator
+    let time = duration.as_micros() as u64;
     let universe = mpi::initialize().unwrap();
     let world = universe.world();
-    // perform all-reduce operation to find maximum time across all processes
     let global_time = world.all_reduce_into(&time, SystemOperation::max());
 
     if world.rank() == 0 {
