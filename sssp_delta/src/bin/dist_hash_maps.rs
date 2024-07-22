@@ -117,7 +117,9 @@ impl LamellarAM for DistHashMapOp {
             DistCmd::Visit(k, new_tent) => {
                 println!("1");
                 let mut data = self.data.write().await;
+                println!("2");
                 if let Some(adj_list) = data.get_mut(&k) {
+                    println!("3");
                     adj_list.tent = *new_tent;
                     DistCmdResult::Visit(Some(adj_list.clone())) 
                 } else {
