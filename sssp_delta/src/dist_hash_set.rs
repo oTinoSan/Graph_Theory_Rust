@@ -24,50 +24,60 @@ impl DistHashSet {
         }
     }
 
-    fn async_insert()
+    pub fn async_insert(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashSetOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Add(k),
+            },
+        )
+    }
 
-    fn for_all()
+    async fn async_insert(&self, value: T) {
+        let mut data = self.data.lock().await;
+        data.insert(value);
+    }
 
-    fn async_erase()
+    // Assuming you have a way to iterate over the elements
+    fn for_all<F>(&self, mut func: F)
+    where
+        F: FnMut(T) + Copy + Send + 'static,
+    {
+        let data = self.data.clone();
+        Runtime::new().unwrap().block_on(async move {
+            let data = data.lock().await;
+            for &item in data.iter() {
+                let self_clone = self.data.clone();
+                let func_clone = func;
+                tokio::spawn(async move {
+                    let self_clone = DistHashSet { data: self_clone };
+                    self_clone.async_insert(item).await;
+                    func_clone(item);
+                });
+            }
+        });
+    }
+}
+    
+    
+ 
 
     consume_all()
 
-    fn get_key_pe(&self, k: i32) -> usize {
-        k as usize % self.num_pes
-    }
-
-    pub fn add(&self, k: i32, v: AdjList) -> impl Future {
+    fn async_erase(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
             DistHashSetOp {
                 data: self.data.clone(),
-                cmd: DistCmd::Add(k, v),
+                cmd: DistCmd::Erase(k),
             },
         )
     }
 
-    pub fn get(&self, k: i32) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
-        self.team.exec_am_pe(
-            dest_pe,
-            DistHashSetOp {
-                data: self.data.clone(),
-                cmd: DistCmd::Get(k),
-            },
-        )
-    }
 
-    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
-        self.team.exec_am_pe(
-            dest_pe,
-            DistHashSetOp {
-                data: self.data.clone(),
-                cmd: DistCmd::Visit(k, v),
-            },
-        )
-    }
 
 }
 
@@ -77,21 +87,19 @@ impl DistHashSet {
 // #[AmData(Debug, Clone)] eventually we will be able to do this... instead  derive serialize and deserialize directly with serde
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DistCmd {
-    Add(i32, AdjList),
-    Get(i32),
-    Visit(i32, f32),
+    Add(i32),
+    Erase(i32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
-    Get(i32),
-    Visit(Option<AdjList>), 
+    Erase,
 }
 
 #[AmData(Debug, Clone)]
 struct DistHashSetOp {
-    data: LocalRwDarc<HashMap<i32, AdjList>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
+    data: LocalRwDarc<HashSet<i32>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
     cmd: DistCmd,
 }
 
@@ -99,28 +107,30 @@ struct DistHashSetOp {
 impl LamellarAM for DistHashSetOp {
     async fn exec(self) -> DistCmdResult {
         match &self.cmd {
-            DistCmd::Add(k, v) => {
-                self.data.write().await.insert(*k, v.clone());
+            DistCmd::Add(k) => {
+                self.data.write().await.insert(*k);
                 DistCmdResult::Add
             }
-            DistCmd::Get(k) => {
-                let data = self.data.read().await;
-                let v = data.get(&k).cloned();
-                println!("{:?}", v.unwrap());
-                DistCmdResult::Get(*k)
+            DistCmd::Erase(k) => {
+                self.data.write().await.remove(*k);
+                DistCmdResult::Erase
             }
-            DistCmd::Visit(k, new_tent) => {
-                let mut data = self.data.write().await;
-                if let Some(adj_list) = data.get_mut(&k) {
-                    adj_list.tent = *new_tent;
-                    DistCmdResult::Visit(Some(adj_list.clone())) 
-                } else {
-                    DistCmdResult::Visit(None)
-                }
-            }
+
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 fn main() {
     let world = lamellar::LamellarWorldBuilder::new().build();
