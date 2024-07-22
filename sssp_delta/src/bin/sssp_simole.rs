@@ -1,5 +1,5 @@
-use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 #[derive(Clone, Eq, PartialEq)]
 struct State {
@@ -28,7 +28,10 @@ fn dijkstra(graph: &HashMap<usize, Vec<(usize, usize)>>, start: usize) -> HashMa
 
     // We're at `start`, with a zero cost
     dist.insert(start, 0);
-    heap.push(State { cost: 0, position: start });
+    heap.push(State {
+        cost: 0,
+        position: start,
+    });
 
     while let Some(State { cost, position }) = heap.pop() {
         // Important as we may have already found a better way
@@ -38,7 +41,10 @@ fn dijkstra(graph: &HashMap<usize, Vec<(usize, usize)>>, start: usize) -> HashMa
 
         if let Some(edges) = graph.get(&position) {
             for &(next_position, next_cost) in edges {
-                let next = State { cost: cost + next_cost, position: next_position };
+                let next = State {
+                    cost: cost + next_cost,
+                    position: next_position,
+                };
 
                 if next.cost < *dist.get(&next_position).unwrap_or(&usize::MAX) {
                     heap.push(next);

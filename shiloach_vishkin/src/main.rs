@@ -1,4 +1,4 @@
-/* 
+/*
 // Example 1 - forest of stars
 int rows  = 15;
 int edges = 20;
@@ -7,7 +7,7 @@ int row_offsets[rows+1] {0, 2, 7, 8, 9, 10, 11, 12, 12, 14, 15, 16, 17, 18, 19, 
 int col_indices[edges]  {3, 5, 4, 10, 12, 13, 14, 6, 0, 1, 0, 2, 9, 11, 8, 1, 8, 1, 1, 1};
 */
 
-/* 
+/*
 // Example 2 - forest, same components
 int rows  = 15;
 int edges = 20;
@@ -32,7 +32,11 @@ let row_offsets: Vec<usize> = vec![0, 2, 6, 9, 11, 14, 19, 21, 22, 24, 26, 28, 3
 let col_indices: Vec<usize> = vec![1, 3, 0, 2, 5, 10, 1, 4, 5, 0, 4, 2, 3, 5, 1, 2, 4, 7, 10, 8, 9, 5, 6, 11, 6, 11, 1, 5, 8, 9, 12, 11, 13, 12];
 */
 
-pub fn run_connected_components(rows: usize, row_offsets: Vec<usize>, col_indices: Vec<usize>) -> Vec<usize> {
+pub fn run_connected_components(
+    rows: usize,
+    row_offsets: Vec<usize>,
+    col_indices: Vec<usize>,
+) -> Vec<usize> {
     // Initialize the vector of connected component labels
     let mut d: Vec<usize> = (0..rows).collect();
 
@@ -87,6 +91,9 @@ pub fn run_connected_components(rows: usize, row_offsets: Vec<usize>, col_indice
 fn main() {
     let rows: usize = 15;
     let row_offsets: Vec<usize> = vec![0, 2, 6, 9, 11, 14, 19, 21, 22, 24, 26, 28, 31, 33, 34, 34];
-    let col_indices: Vec<usize> = vec![1, 3, 0, 2, 5, 10, 1, 4, 5, 0, 4, 2, 3, 5, 1, 2, 4, 7, 10, 8, 9, 5, 6, 11, 6, 11, 1, 5, 8, 9, 12, 11, 13, 12];
+    let col_indices: Vec<usize> = vec![
+        1, 3, 0, 2, 5, 10, 1, 4, 5, 0, 4, 2, 3, 5, 1, 2, 4, 7, 10, 8, 9, 5, 6, 11, 6, 11, 1, 5, 8,
+        9, 12, 11, 13, 12,
+    ];
     run_connected_components(rows, row_offsets, col_indices);
 }

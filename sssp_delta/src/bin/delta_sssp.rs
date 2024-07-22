@@ -1,12 +1,12 @@
 use lamellar::active_messaging::prelude::*;
 use lamellar::darc::prelude::*;
+use rayon::prelude::*;
+use sssp_delta::dist_hash_maps::*;
+use std::collections::{HashMap, HashSet};
 use std::env::{self, args};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
-use std::collections::{HashMap, HashSet};
-use rayon::prelude::*;
-use sssp_delta::dist_hash_maps::*; 
 
 // arg[0] = executable
 // arg[1] = rmat_scale
@@ -24,7 +24,7 @@ struct AdjList {
 //     rmat_scale: usize,
 //     max_weight: &mut f32,
 // ) {
-    // ... implementation of RMAT graph generation ...
+// ... implementation of RMAT graph generation ...
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,9 +40,9 @@ fn main() {
 
     let buckets: Vec<HashSet<usize>> = Vec::new();
     let distributed_map = DistHashMap::new(&world, num_pes);
-    
+
     // placeholder, and will need to be changed
-    let mut num_buckets: usize = 0; 
+    let mut num_buckets: usize = 0;
     let mut delta: f32 = 3.0;
     let mut max_weight: f32 = 0.0; // max shortest path, use 21 for testing
     let max_degree: f32;
@@ -56,7 +56,7 @@ fn main() {
     } else {
         println!("Please run the program with at least 3 arguments.");
     }
-   
+
     // start timing
     let beg = Instant::now();
     // placeholder for rmat generation
@@ -69,11 +69,11 @@ fn main() {
 
     // loops through the the hash map data to find degree
     distributed_map.iter().for_each(|(_k, v)| {
-        if v.data.len() > degree {  // 'data' must be substituted for adjacency list edges
+        if v.data.len() > degree {
+            // 'data' must be substituted for adjacency list edges
             degree = v.data.len(); // 'data' must be substituted for adjacency list edges
         }
     });
-
 
     if args.len() == 2 {
         let max_degree = max_degree.load(Ordering::SeqCst) as f32;
@@ -87,7 +87,7 @@ fn main() {
     let duration = end.duration_since(beg);
     // convert duration to microseconds
     let time = duration.as_micros() as u64; // Ensure it fits into u64
-    // assuming `world` is the communicator
+                                            // assuming `world` is the communicator
     let universe = mpi::initialize().unwrap();
     let world = universe.world();
     // perform all-reduce operation to find maximum time across all processes
@@ -96,17 +96,16 @@ fn main() {
     if world.rank() == 0 {
         println!("{}", num_buckets);
         println!("{}", global_time as f64 / 1000.0);
-    
     } else {
         let path = String::new();
         let mut degree = 0;
-    
+
         // Placeholder for the logic to populate `map` with graph data
         // Assuming `generate_rmat_graph` and `map` are appropriately defined and accessible here
         let beg = Instant::now();
         generate_rmat_graph(&world, &graph.lock().unwrap(), 8, &mut max_weight);
         let end = Instant::now();
-    
+
         // Assuming `distributed_map` is a suitable structure to iterate over for degree calculation
         // and it's accessible here
         distributed_map.iter().for_each(|(_k, v)| {
@@ -115,10 +114,10 @@ fn main() {
                 degree = edges_len;
             }
         });
-    
+
         // Perform an all-reduce operation to find the maximum degree across all processes
         let max_degree = world.all_reduce_into(&degree, SystemOperation::max());
-    
+
         let delta = 1.0 / max_degree as f32;
         num_buckets = (max_weight / delta).ceil() as usize + 1;
     }
@@ -136,7 +135,6 @@ fn main() {
     // relax the source
     // Asynchronous visit to the source node
 
-
     // Asynchronous insert into the first bucket
     world.exec_am_all(move || {
         // Assuming `buckets` is accessible and supports async insertion
@@ -144,15 +142,11 @@ fn main() {
     });
     distributed_map();
 
-
     // Start timing
     let beg = std::time::Instant::now();
 
     let mut idx = 0;
 }
-
-
-
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -166,7 +160,6 @@ pub struct DistHashMap {
 }
 
 impl DistHashMap {
-
     pub fn async_insert(&self, k: i32, v: i32) -> impl Future {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
@@ -178,7 +171,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn new(world: &LamellarWorld,  num_pes: usize) -> Self {
+    pub fn new(world: &LamellarWorld, num_pes: usize) -> Self {
         let team = world.team();
         DistHashMap {
             num_pes,
@@ -221,7 +214,7 @@ impl DistHashMap {
 enum DistCmd {
     Add(i32, i32),
     Get(i32),
-    AsyncVisit(i32, i32), 
+    AsyncVisit(i32, i32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,7 +253,7 @@ impl LamellarAM for DistHashMapOp {
                     data.insert(k, v);
                 }
                 DistCmdResult::Add // indicate a successful insert or modification
-            },
+            }
         }
     }
 }
@@ -284,12 +277,8 @@ fn main() {
             println!("{}: {:?}", i, map_clone.get(i).await);
         }
     });
- 
+
     world.barrier();
     let local_data = world.block_on(distributed_map.data.read());
-    println!(
-        "[{my_pe}] local data: {:?}",
-        local_data
-    );
+    println!("[{my_pe}] local data: {:?}", local_data);
 }
-

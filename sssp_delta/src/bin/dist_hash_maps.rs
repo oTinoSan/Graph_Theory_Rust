@@ -63,6 +63,17 @@ impl DistHashMap {
         )
     }
 
+    pub fn visit(&self, k: i32, v: f32) -> impl Future {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Visit(k, v),
+            },
+        )
+    }
+
 }
 
 // this is one way we can implement commands for the distributed hashmap
@@ -73,12 +84,14 @@ impl DistHashMap {
 enum DistCmd {
     Add(i32, AdjList),
     Get(i32),
+    Visit(i32, f32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
     Get(i32),
+    Visit,
 }
 
 #[AmData(Debug, Clone)]
@@ -100,6 +113,15 @@ impl LamellarAM for DistHashMapOp {
                 let v = data.get(&k).cloned();
                 println!("{:?}", v.unwrap());
                 DistCmdResult::Get(*k)
+            }
+            DistCmd::Visit(k, new_tent) => {
+                let mut data = self.data.write().await; // obtain a write lock on the data
+                if let Some(adj_list) = data.get_mut(&k) { // retrieve the mutable reference to the AdjList if it exists
+                    adj_list.tent = *new_tent; // update the tent value
+                    DistCmdResult::Visit // return the Visit result
+                } else {
+                    DistCmdResult::Visit // if the key does not exist
+                }
             }
         }
     }

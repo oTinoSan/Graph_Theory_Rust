@@ -1,11 +1,11 @@
 use lamellar::array::prelude::*;
-use lamellar::LamellarWorld; 
-use std::sync::Arc; 
-use serde::{Serialize, Deserialize};
+use lamellar::LamellarWorld;
+use serde::{Deserialize, Serialize};
+use sssp_delta::dist_hash_maps::{self, *};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
-use sssp_delta::dist_hash_maps::{self, *};
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Serialize, Deserialize)]
@@ -14,8 +14,12 @@ struct AdjList {
     tent: f32,
 }
 
-async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut f32, path: &str) -> io::Result<()> {
-
+async fn get_graph(
+    world: Arc<LamellarWorld>,
+    mat: DistHashMap,
+    max_weight: &mut f32,
+    path: &str,
+) -> io::Result<()> {
     let inf = f32::INFINITY;
     let mut max: f32 = 0.0;
 
@@ -31,19 +35,17 @@ async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut
         let row: Vec<&str> = line.split(',').collect();
 
         if row.len() < 3 {
-            continue; 
+            continue;
         }
 
         let node: usize = row[0].parse().unwrap_or(0);
         let edge: usize = row[1].parse().unwrap_or(0);
         let weight: f32 = row[2].parse().unwrap_or(0.0);
 
-
         // Load adjacency row into matrix
         if row[0].parse::<usize>().unwrap_or_default() != curr_node {
             if world.my_pe() == curr_node % world.num_pes() {
-                let insert = (adj.clone(), 
-                f32::INFINITY); // Assuming `Inf` is f32::INFINITY
+                let insert = (adj.clone(), f32::INFINITY); // Assuming `Inf` is f32::INFINITY
                 mat.add(curr_node, insert); // Assuming a synchronous `insert` instead of `async_insert`
 
                 // Update maxs
@@ -54,9 +56,9 @@ async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut
                 }
             }
 
-    adj.clear();
-    curr_node += 1;
-}
+            adj.clear();
+            curr_node += 1;
+        }
         adj.push((edge, weight));
     }
 
@@ -79,7 +81,6 @@ async fn get_graph(world: Arc<LamellarWorld>, mat: DistHashMap, max_weight: &mut
 
     Ok(())
 }
-
 
 #[lamellar::am]
 #[tokio::main]

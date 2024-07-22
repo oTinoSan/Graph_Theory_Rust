@@ -6,7 +6,6 @@ pub struct CompressedSparseRows {
     pub col_indices: Vec<u64>,
 }
 
-
 impl CompressedSparseRows {
     pub fn from_adjacency(adj: &Array2D<u64>) -> Self {
         let mut counter = 0;
@@ -25,9 +24,12 @@ impl CompressedSparseRows {
             row_offset.push(counter);
         }
 
-        Self { values, row_offset, col_indices }
+        Self {
+            values,
+            row_offset,
+            col_indices,
+        }
     }
-
 
     pub fn edges_to_csr(mut edges: Vec<(u64, u64, u64)>) -> Self {
         edges.sort_unstable_by(|(a, _, _), (b, _, _)| a.partial_cmp(b).unwrap());
@@ -43,19 +45,22 @@ impl CompressedSparseRows {
             col_indices.push(dest);
             values.push(value);
         }
-        row_offset.push(col_indices.len() as u64); 
+        row_offset.push(col_indices.len() as u64);
 
-        Self { values, row_offset, col_indices }
+        Self {
+            values,
+            row_offset,
+            col_indices,
+        }
     }
-
 
     pub fn to_adjacency_matrix(&self) -> Vec<Vec<u64>> {
         let num_rows = self.row_offset.len() - 1;
         let max_col_index = *self.col_indices.iter().max().unwrap_or(&0) as usize;
         let matrix_size = std::cmp::max(num_rows, max_col_index + 1);
-    
+
         let mut adj_matrix = vec![vec![0; matrix_size]; matrix_size];
-    
+
         for row in 0..num_rows {
             let start = self.row_offset[row] as usize;
             let end = self.row_offset[row + 1] as usize;
@@ -65,7 +70,7 @@ impl CompressedSparseRows {
                 adj_matrix[row][col] = value; // Use the value instead of setting it to 1
             }
         }
-    
+
         adj_matrix
     }
 }
@@ -93,16 +98,22 @@ fn main() {
     println!("Column Indices: {:?}", compression.col_indices);
     println!("Row Offset: {:?}", compression.row_offset);
 
-    
     /////////////////////////////
     // Coverts edges to CSR
     ///////////////////////////
 
     let edge_list = vec![
-        (1, 2, 10), (1, 3, 15), (1, 4, 20), 
-        (2, 3, 25), (2, 4, 30), (2, 5, 35), 
-        (3, 1, 40), (3, 4, 45), (4, 3, 50), 
-        (4, 5, 55), (5, 1, 60)
+        (1, 2, 10),
+        (1, 3, 15),
+        (1, 4, 20),
+        (2, 3, 25),
+        (2, 4, 30),
+        (2, 5, 35),
+        (3, 1, 40),
+        (3, 4, 45),
+        (4, 3, 50),
+        (4, 5, 55),
+        (5, 1, 60),
     ];
 
     let edge_conversion = CompressedSparseRows::edges_to_csr(edge_list);
@@ -110,7 +121,6 @@ fn main() {
     println!("Values: {:?}", edge_conversion.values);
     println!("Column Indices: {:?}", edge_conversion.col_indices);
     println!("Row Offset: {:?}", edge_conversion.row_offset);
-
 
     ///////////////////////////////
     // Converts CSR to matrix
