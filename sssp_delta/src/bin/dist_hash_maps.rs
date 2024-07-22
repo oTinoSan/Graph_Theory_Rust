@@ -164,6 +164,9 @@ fn main() {
         if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
             println!("{:?}", updated_adj_list);
         }
+        else {
+            println!("Did not work")
+        }
     });
 
 }
