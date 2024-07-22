@@ -155,14 +155,16 @@ fn main() {
         }
     });
  
-    world.barrier();
+    { 
+        world.barrier();
     let local_data = world.block_on(distributed_map.data.read());
     println!(
         "[{my_pe}] local data: {:?}",
         local_data
     );
+    }
 
-    world.barrier();
+    // world.barrier();
     let n_tent = 5.0;
     world.block_on(async {
         if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
