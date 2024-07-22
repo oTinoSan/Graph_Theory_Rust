@@ -39,8 +39,8 @@ fn main() {
     let distributed_map = DistHashMap::new(&world, num_pes);
     
     // placeholder, and will need to be changed
-    let mut num_buckets: usize = 0; 
-    let mut delta: f32 = 3.0;
+    let mut num_buckets: usize = 0;
+    let mut delta: f32 = 3.0;k
     let mut max_weight: f32 = 0.0; // max shortest path, use 21 for testing
     let max_degree: f32;
 
@@ -77,35 +77,6 @@ fn main() {
     let world = universe.world();
     let global_time = world.all_reduce_into(&time, SystemOperation::max());
 
-    if world.rank() == 0 {
-        println!("{}", num_buckets);
-        println!("{}", global_time as f64 / 1000.0);
-    
-    } else {
-        let path = String::new();
-        let mut degree = 0;
-    
-        // Placeholder for the logic to populate `map` with graph data
-        // Assuming `generate_rmat_graph` and `map` are appropriately defined and accessible here
-        let beg = Instant::now();
-        generate_rmat_graph(&world, &graph.lock().unwrap(), 8, &mut max_weight);
-        let end = Instant::now();
-    
-        // Assuming `distributed_map` is a suitable structure to iterate over for degree calculation
-        // and it's accessible here
-        distributed_map.iter().for_each(|(_k, v)| {
-            let edges_len = v.edges.len(); // Assuming `v` has an `edges` field
-            if edges_len > degree {
-                degree = edges_len;
-            }
-        });
-    
-        // Perform an all-reduce operation to find the maximum degree across all processes
-        let max_degree = world.all_reduce_into(&degree, SystemOperation::max());
-    
-        let delta = 1.0 / max_degree as f32;
-        num_buckets = (max_weight / delta).ceil() as usize + 1;
-    }
 
     // Add the sets to the vector
     for _ in 0..num_buckets {
