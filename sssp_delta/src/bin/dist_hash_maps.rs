@@ -91,7 +91,7 @@ enum DistCmd {
 pub enum DistCmdResult {
     Add,
     Get(i32),
-    Visit(Option<AdjList>), // Updated to include an Option<AdjList>
+    Visit(Option<AdjList>), 
 }
 
 #[AmData(Debug, Clone)]
@@ -118,9 +118,10 @@ impl LamellarAM for DistHashMapOp {
                 let mut data = self.data.write().await;
                 if let Some(adj_list) = data.get_mut(&k) {
                     adj_list.tent = *new_tent;
-                    DistCmdResult::Visit(Some(adj_list.clone())) // Updated to return the updated AdjList
+                    DistCmdResult::Visit(Some(adj_list.clone())) 
                 } else {
-                    DistCmdResult::Visit(None) // No AdjList found for the key
+                    println!("None");
+                    DistCmdResult::Visit(None)
                 }
             }
         }
