@@ -63,7 +63,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn visit(&self, k: i32, v: f32) -> impl Future {
+    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -91,7 +91,7 @@ enum DistCmd {
 pub enum DistCmdResult {
     Add,
     Get(i32),
-    Visit,
+    Visit(Option<AdjList>), // Updated to include an Option<AdjList>
 }
 
 #[AmData(Debug, Clone)]
@@ -115,12 +115,12 @@ impl LamellarAM for DistHashMapOp {
                 DistCmdResult::Get(*k)
             }
             DistCmd::Visit(k, new_tent) => {
-                let mut data = self.data.write().await; // obtain a write lock on the data
-                if let Some(adj_list) = data.get_mut(&k) { // retrieve the mutable reference to the AdjList if it exists
-                    adj_list.tent = *new_tent; // update the tent value
-                    DistCmdResult::Visit // return the Visit result
+                let mut data = self.data.write().await;
+                if let Some(adj_list) = data.get_mut(&k) {
+                    adj_list.tent = *new_tent;
+                    DistCmdResult::Visit(Some(adj_list.clone())) // Updated to return the updated AdjList
                 } else {
-                    DistCmdResult::Visit // if the key does not exist
+                    DistCmdResult::Visit(None) // No AdjList found for the key
                 }
             }
         }
@@ -161,8 +161,9 @@ fn main() {
 
     let n_tent = 5.0;
     world.block_on(async {
-        distributed_map.visit(9, n_tent).await;
-        println!("{:?}", distributed_map.get(9).await);
+        if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
+            println!("{:?}", updated_adj_list);
+        }
     });
 
 }
