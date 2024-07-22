@@ -155,14 +155,13 @@ fn main() {
         }
     });
  
-    { 
-        world.barrier();
+    world.barrier();
     let local_data = world.block_on(distributed_map.data.read());
     println!(
         "[{my_pe}] local data: {:?}",
         local_data
     );
-    }
+    drop(local_data);
 
     // world.barrier();
     let n_tent = 5.0;
