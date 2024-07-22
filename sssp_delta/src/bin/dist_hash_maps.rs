@@ -162,6 +162,7 @@ fn main() {
         local_data
     );
 
+    world.barrier();
     let n_tent = 5.0;
     world.block_on(async {
         if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
