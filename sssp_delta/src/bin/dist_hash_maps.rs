@@ -115,11 +115,8 @@ impl LamellarAM for DistHashMapOp {
                 DistCmdResult::Get(*k)
             }
             DistCmd::Visit(k, new_tent) => {
-                println!("1");
                 let mut data = self.data.write().await;
-                println!("2");
                 if let Some(adj_list) = data.get_mut(&k) {
-                    println!("3");
                     adj_list.tent = *new_tent;
                     DistCmdResult::Visit(Some(adj_list.clone())) 
                 } else {
@@ -146,6 +143,7 @@ fn main() {
         let _ = distributed_map.add(i, adj_list.clone());
     };
 
+
     world.wait_all();
     world.barrier();
     let map_clone = distributed_map.clone();
@@ -155,6 +153,7 @@ fn main() {
         }
     });
  
+
     world.barrier();
     let local_data = world.block_on(distributed_map.data.read());
     println!(
@@ -163,14 +162,14 @@ fn main() {
     );
     drop(local_data);
 
-    // world.barrier();
+
     let n_tent = 5.0;
     world.block_on(async {
         if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
             println!("{:?}", updated_adj_list);
         }
         else {
-            println!("Did not work")
+            println!("Key does not exist")
         }
     });
 
