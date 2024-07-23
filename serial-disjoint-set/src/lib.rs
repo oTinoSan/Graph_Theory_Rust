@@ -101,4 +101,31 @@ impl<T> DisjointSet<T> where T: Eq + PartialEq + Hash + Copy + PartialOrd {
             }
         }
     }
+
+    pub fn union_splice(&self, a: T, b: T) {
+        if let (Some(a_rc), Some(b_rc)) = (self.data.get(&a), self.data.get(&b)) {
+            let mut a_rc = a_rc.clone();
+            let mut b_rc = b_rc.clone();
+            let mut a_parent = a_rc.borrow().parent.upgrade().unwrap();
+            let mut b_parent = b_rc.borrow().parent.upgrade().unwrap();
+            // needs some work to handle correctly updating rank values (specifically in else)
+            while a_parent != b_parent {
+                if a_parent.borrow().rank < b_parent.borrow().rank {
+                    a_rc.borrow_mut().parent = Rc::<RefCell<Vertex<T>>>::downgrade(&b_parent);
+                    if a_rc == a_parent {
+                        break;
+                    }
+                    a_rc = a_parent;
+                    a_parent = a_rc.borrow().parent.upgrade().unwrap();
+                } else {
+                    b_rc.borrow_mut().parent = Rc::<RefCell<Vertex<T>>>::downgrade(&a_parent);
+                    if b_rc == b_parent {
+                        break
+                    }
+                    b_rc = b_parent;
+                    b_parent = b_rc.borrow().parent.upgrade().unwrap();
+                }
+            }
+        }
+    }
 }
