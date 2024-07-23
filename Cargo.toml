@@ -1,5 +1,5 @@
 [workspace]
-members = [ "dist-structs","lamellar-rmat","rmat-generator"]
+members = [ "dist-structs","lamellar-rmat","rmat-generator", "serial-disjoint-set"]
 
 [package]
 name = "graph-theory"

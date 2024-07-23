@@ -1,6 +1,6 @@
 use lamellar::{LamellarEnv, LamellarTeam, LamellarWorld};
 use rmat_generator::{RMATGraph, RMATIter, RngCore, SeedableRng};
-use dist_structs::{Edge, EdgeType};
+use dist_structs::EdgeType;
 use std::sync::Arc;
 
 #[derive(Debug)]
