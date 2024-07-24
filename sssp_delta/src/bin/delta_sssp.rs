@@ -113,7 +113,9 @@ fn main() {
     while idx < num_buckets {
         for i in buckets[idx].data.iter() {
             heavy_bucket.add_set(i);
-        
+            let dist_get = distributed_map.get(k);
+            get.
+            distributed_map.visit(k, v)
         
         map.async_visit(vertex, [](const auto &head, adj_list &head_info) {
             for (auto edge : head_info.edges) {

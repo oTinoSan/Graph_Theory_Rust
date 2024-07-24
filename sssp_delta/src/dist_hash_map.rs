@@ -90,8 +90,8 @@ enum DistCmd {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
-    Get(i32),
-    Visit(Option<AdjList>), 
+    Get(AdjList),
+    Visit(Option<AdjList>),
 }
 
 #[AmData(Debug, Clone)]
@@ -110,9 +110,9 @@ impl LamellarAM for DistHashMapOp {
             }
             DistCmd::Get(k) => {
                 let data = self.data.read().await;
-                let v = data.get(&k).cloned();
-                println!("{:?}", v.unwrap());
-                DistCmdResult::Get(*k)
+                let v = data.get(k);
+                println!("{:?}", v.cloned());
+                DistCmdResult::Get(v.expect("error").clone())
             }
             DistCmd::Visit(k, new_tent) => {
                 let mut data = self.data.write().await;
