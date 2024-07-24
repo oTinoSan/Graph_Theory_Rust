@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
-use sssp_delta::dist_hash_maps::*; 
+use sssp_delta::dist_hash_map::*; 
 use sssp_delta::dist_hash_set::*;
 
 // arg[0] = executable
@@ -84,7 +84,7 @@ fn main() {
         let init_bucket_set= DistHashSet::new(&world, num_pes);
         buckets.push(init_bucket_set); 
     }
-
+    
     // start timing  buckets.emplace_back(world);
     let beg = Instant::now();
     let idx: u64 = 0;
