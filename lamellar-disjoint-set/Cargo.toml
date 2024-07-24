@@ -1,0 +1,8 @@
+[package]
+name = "lamellar-disjoint-set"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dist-structs = { version = "0.1.0", path = "../dist-structs" }
+lamellar = "0.6.1"
