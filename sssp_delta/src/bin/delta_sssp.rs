@@ -108,9 +108,21 @@ fn main() {
     let heavy_bucket = DistHashSet::new(world, num_pes);
     for i in buckets[idx].data.iter() {
         heavy_bucket.add_set(i);
-    
+    }
+
     while idx < num_buckets {
+        for i in buckets[idx].data.iter() {
+            heavy_bucket.add_set(i);
         
+        
+        map.async_visit(vertex, [](const auto &head, adj_list &head_info) {
+            for (auto edge : head_info.edges) {
+                if (std::get<1>(edge) <= delta) {
+                    float potential_tent = head_info.tent + std::get<1>(edge);
+                    relax_requests_lambda(std::get<0>(edge), potential_tent);
+                }
+            }
+        });
 
     }
    
