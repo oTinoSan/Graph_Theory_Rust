@@ -9,8 +9,8 @@ use std::sync::Arc;
 // edge: (vertex, weight)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdjList {
-    edges: Vec<(usize, f64)>,
-    tent: f32,
+    pub edges: Vec<(usize, f64)>,
+    pub tent: f32,
 }
 
 impl std::fmt::Display for AdjList {
