@@ -7,6 +7,7 @@ use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
 use sssp_delta::dist_hash_maps::*; 
+use sssp_delta::dist_hash_set::*;
 
 // arg[0] = executable
 // arg[1] = rmat_scale
@@ -35,12 +36,12 @@ fn main() {
     let num_pes = world.num_pes();
     world.barrier();
 
-    let buckets: Vec<HashSet<usize>> = Vec::new();
+    let buckets: Vec<DistHashSet<usize>> = Vec::new();
     let distributed_map = DistHashMap::new(&world, num_pes);
     
     // placeholder, and will need to be changed
     let mut num_buckets: usize = 0;
-    let mut delta: f32 = 3.0;k
+    let mut delta: f32 = 3.0;
     let mut max_weight: f32 = 0.0; // max shortest path, use 21 for testing
     let max_degree: f32;
 
@@ -80,28 +81,52 @@ fn main() {
 
     // Add the sets to the vector
     for _ in 0..num_buckets {
-        buckets.push(&world);
+        let init_bucket_set= DistHashSet::new(&world, num_pes);
+        buckets.push(init_bucket_set); 
     }
 
-    // start timing
+    // start timing  buckets.emplace_back(world);
     let beg = Instant::now();
     let idx: u64 = 0;
 
     // complete a source relaxation --------------------------------------------------------------------------------------
     // relax the source
-    // Asynchronous visit to the source node
 
-
-    // Asynchronous insert into the first bucket
-    world.exec_am_all(move || {
-        // Assuming `buckets` is accessible and supports async insertion
-        buckets[0].async_insert(0);
+    world.block_on(async {
+        if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(0, 0).await {    // visit(node, tent_val)
+            println!("{:?}", updated_adj_list);
+        }
+        else {
+            println!("Key does not exist")
+        }
     });
-    distributed_map();
+    
+    // insert the source into the first bucket
+    buckets[0].async_insert(0);
+
+    // duplicate the current bucket -----------------------------------------------------------
+    let bucket_copy = buckets[idx].clone();
+   
+   
+    // let values = bucket_copy.get_set().await;
+    // for value in values {
+    //     println!("{}", value);
+    // }
+    // need to decide where vertex is
+    // bucket_copy.set_insert(vertex);
 
 
-    // Start timing
-    let beg = std::time::Instant::now();
 
-    let mut idx = 0;
-}
+
+    static auto fill_bucket_copy_lambda = [&bucket_copy](const auto &vertex) {
+    // if the vertex is not already in the copy bucket, add it
+        bucket_copy.async_insert(vertex);
+    };
+
+    buckets[idx].for_all([](const auto &vertex) {
+        fill_bucket_copy_lambda(vertex);
+    });
+
+    }
+
+    let buckets: Vec<HashSet<usize>> = Vec::new();

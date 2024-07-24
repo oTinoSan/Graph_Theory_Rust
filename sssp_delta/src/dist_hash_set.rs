@@ -12,7 +12,8 @@ pub struct DistHashSet {
     num_pes: usize,
     team: Arc<LamellarTeam>,
     data: LocalRwDarc<HashSet<i32>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
-}
+} 
+
 
 impl DistHashSet {
     pub fn new(world: &LamellarWorld,  num_pes: usize) -> Self {
@@ -24,7 +25,22 @@ impl DistHashSet {
         }
     }
 
-    pub fn async_insert(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+    fn get_key_pe(&self, k: i32) -> usize {
+        k as usize % self.num_pes
+    }
+
+    pub fn get_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashSetOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Get(),
+            },
+        )
+    }
+
+    pub fn insert_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -35,30 +51,7 @@ impl DistHashSet {
         )
     }
 
-    async fn async_insert(&self, value: T) {
-        let mut data = self.data.lock().await;
-        data.insert(value);
-    }
 
-    // Assuming you have a way to iterate over the elements
-    fn for_all<F>(&self, mut func: F)
-    where
-        F: FnMut(T) + Copy + Send + 'static,
-    {
-        let data = self.data.clone();
-        Runtime::new().unwrap().block_on(async move {
-            let data = data.lock().await;
-            for &item in data.iter() {
-                let self_clone = self.data.clone();
-                let func_clone = func;
-                tokio::spawn(async move {
-                    let self_clone = DistHashSet { data: self_clone };
-                    self_clone.async_insert(item).await;
-                    func_clone(item);
-                });
-            }
-        });
-    }
 }
     
     
@@ -79,8 +72,6 @@ impl DistHashSet {
 
 
 
-}
-
 // this is one way we can implement commands for the distributed hashmap
 // a maybe more efficient way to do this would be to create an individual
 // active message for each command
@@ -88,12 +79,14 @@ impl DistHashSet {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DistCmd {
     Add(i32),
+    Get(),
     Erase(i32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
+    Get(i32),
     Erase,
 }
 
@@ -110,6 +103,12 @@ impl LamellarAM for DistHashSetOp {
             DistCmd::Add(k) => {
                 self.data.write().await.insert(*k);
                 DistCmdResult::Add
+            }
+            DistCmd::Get() => {
+                let data = self.data.read().await;
+                let v = data.get(&k).cloned();
+                println!("{:?}", v.unwrap());
+                DistCmdResult::Get(*k)
             }
             DistCmd::Erase(k) => {
                 self.data.write().await.remove(*k);
