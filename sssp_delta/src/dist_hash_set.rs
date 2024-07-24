@@ -58,7 +58,7 @@ impl DistHashSet {
     
  
 
-    consume_all()
+   // consume_all()
 
     fn async_erase(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
@@ -158,10 +158,10 @@ fn main() {
         }
     });
 
-    -store the bucket_indices locally
-    -get global reduction to get distributed min reduce and do a barrier to make sure this is finished minimum 
-    -process all things that are part of the active bucket, iterate through everything in the hash map to see if tent(u) is in active bucket and if it is spawn edge relaxations and keep tally of this to spawn heavy relaxations later 
-    -create a vector that is represented locally to spawn the edge relaxations
+    // -store the bucket_indices locally
+    // -get global reduction to get distributed min reduce and do a barrier to make sure this is finished minimum 
+    // -process all things that are part of the active bucket, iterate through everything in the hash map to see if tent(u) is in active bucket and if it is spawn edge relaxations and keep tally of this to spawn heavy relaxations later 
+    // -create a vector that is represented locally to spawn the edge relaxations
 
 
 
