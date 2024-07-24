@@ -154,23 +154,23 @@ fn main() {
     });
 
 
-    world.barrier();
-    let local_data = world.block_on(distributed_map.data.read());
-    println!(
-        "[{my_pe}] local data: {:?}",
-        local_data
-    );
-    drop(local_data);
+    // world.barrier();
+    // let local_data = world.block_on(distributed_map.data.read());
+    // println!(
+    //     "[{my_pe}] local data: {:?}",
+    //     local_data
+    // );
+    // drop(local_data);
 
 
-    let n_tent = 5.0;
-    world.block_on(async {
-        if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
-            println!("{:?}", updated_adj_list);
-        }
-        else {
-            println!("Key does not exist")
-        }
-    });
+    // let n_tent = 5.0;
+    // world.block_on(async {
+    //     if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(9, n_tent).await {
+    //         println!("{:?}", updated_adj_list);
+    //     }
+    //     else {
+    //         println!("Key does not exist")
+    //     }
+    // });
 
 }
