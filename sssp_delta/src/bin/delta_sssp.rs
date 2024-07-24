@@ -101,12 +101,18 @@ fn main() {
         }
     });
     
-    // insert the source into the first bucket
-    buckets[0].async_insert(0);
+    buckets[0].add_set(0);
 
     // duplicate the current bucket -----------------------------------------------------------
-    let bucket_copy = buckets[idx].clone();
-   
+
+    let heavy_bucket = DistHashSet::new(world, num_pes);
+    for i in buckets[idx].data.iter() {
+        heavy_bucket.add_set(i);
+    
+    while idx < num_buckets {
+        
+
+    }
    
     // let values = bucket_copy.get_set().await;
     // for value in values {
