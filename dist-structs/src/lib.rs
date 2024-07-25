@@ -6,7 +6,7 @@ use std::sync::Arc;
 use lamellar::active_messaging::AmDist;
 use lamellar::{active_messaging::prelude::*, darc::prelude::*, Deserialize, Serialize};
 
-#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default, PartialEq)]
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default, PartialEq, Hash)]
 pub struct Edge(pub u64, pub u64);
 
 impl lamellar::memregion::Dist for Edge {}
@@ -30,32 +30,16 @@ pub enum EdgeType {
 
 impl lamellar::memregion::Dist for EdgeType {}
 
-pub struct DistHashMap<K, V>
-where
-    K: 'static,
-    V: 'static,
-{
-    num_pes: usize,
-    team: Arc<LamellarTeam>,
-    data: LocalRwDarc<HashMap<K, V>>,
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default)]
+pub struct Vertex {
+    pub parent: u64,
+    pub rank: usize,
 }
 
-impl<K, V> DistHashMap<K, V>
-where
-    K: Hash
-{
-    pub fn new(world: &LamellarWorld, num_pes: usize) -> Self {
-        let team = world.team();
-        DistHashMap {
-            num_pes,
-            team: team.clone(),
-            data: LocalRwDarc::new(team, HashMap::new()).unwrap(),
-        }
-    }
-
-    fn get_key_pe(&self, k: K) -> usize {
-        let mut state = DefaultHasher::new();
-        k.hash(&mut state);
-        state.finish() as usize % self.num_pes
+impl PartialEq for Vertex {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent
     }
 }
+
+impl lamellar::memregion::Dist for Vertex {}
