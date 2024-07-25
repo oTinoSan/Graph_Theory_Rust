@@ -51,11 +51,19 @@ impl DistHashSet {
             },
         )
     }
- 
+  
+   pub fn consume_set(&self, k: i32, t: f64) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashSetOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Consume(k, t),
+            },
+        )
+    }
 
-   // consume_all()
-
-    fn async_erase(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+    fn erase(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -77,6 +85,7 @@ enum DistCmd {
     Add(i32),
     Get(i32),
     Erase(i32),
+    Consume(i32, f64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +93,7 @@ pub enum DistCmdResult {
     Add,
     Get(i32),
     Erase,
+    Consume,
 }
 
 #[AmData(Debug, Clone)]
@@ -109,6 +119,18 @@ impl LamellarAM for DistHashSetOp {
             DistCmd::Erase(k) => {
                 self.data.write().await.remove(k);
                 DistCmdResult::Erase
+            }
+            DistCmd::Consume(k, tent_val) => {
+                let mut data = self.data.write().await;
+                if let Some(adj_list) = data.get_mut(&k) {
+                    if tent_val != adj_list.tent {
+                        self.data.write().await.remove(k);
+                        DistCmdResult::Consume
+                    } else {
+                        DistCmdResult::Consume
+                    }
+                    DistCmdResult::Consume
+                }
             }
 
         }
