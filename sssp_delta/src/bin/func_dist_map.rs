@@ -1,7 +1,7 @@
 use lamellar::active_messaging::prelude::*;
 use lamellar::darc::prelude::*;
-use serde::{Deserialize, Serialize};
 use lamellar::LamellarTeam;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
@@ -15,7 +15,11 @@ pub struct AdjList {
 
 impl std::fmt::Display for AdjList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "AdjList {{ vertex, weight: {:?}, tent: {} }}", self.edges, self.tent)
+        write!(
+            f,
+            "AdjList {{ vertex, weight: {:?}, tent: {} }}",
+            self.edges, self.tent
+        )
     }
 }
 
@@ -28,7 +32,7 @@ pub struct DistHashMap {
 }
 
 impl DistHashMap {
-    pub fn new(world: &LamellarWorld,  num_pes: usize) -> Self {
+    pub fn new(world: &LamellarWorld, num_pes: usize) -> Self {
         let team = world.team();
         DistHashMap {
             num_pes,
@@ -73,7 +77,6 @@ impl DistHashMap {
             },
         )
     }
-
 }
 
 // this is one way we can implement commands for the distributed hashmap
@@ -91,7 +94,7 @@ enum DistCmd {
 pub enum DistCmdResult {
     Add,
     Get(i32),
-    Visit(Option<AdjList>), 
+    Visit(Option<AdjList>),
 }
 
 #[AmData(Debug, Clone)]
@@ -118,7 +121,7 @@ impl LamellarAM for DistHashMapOp {
                 let mut data = self.data.write().await;
                 if let Some(adj_list) = data.get_mut(&k) {
                     adj_list.tent = *new_tent;
-                    DistCmdResult::Visit(Some(adj_list.clone())) 
+                    DistCmdResult::Visit(Some(adj_list.clone()))
                 } else {
                     DistCmdResult::Visit(None)
                 }
@@ -141,8 +144,7 @@ fn main() {
     for i in 0..10 {
         // we can ignore the 'unused' result here because we call 'wait_all' below, otherwise to ensure each request completed we could use 'block_on'
         let _ = distributed_map.add(i, adj_list.clone());
-    };
-
+    }
 
     world.wait_all();
     world.barrier();
@@ -153,7 +155,6 @@ fn main() {
         }
     });
 
-
     // world.barrier();
     // let local_data = world.block_on(distributed_map.data.read());
     // println!(
@@ -161,7 +162,6 @@ fn main() {
     //     local_data
     // );
     // drop(local_data);
-
 
     // let n_tent = 5.0;
     // world.block_on(async {
@@ -172,5 +172,4 @@ fn main() {
     //         println!("Key does not exist")
     //     }
     // });
-
 }

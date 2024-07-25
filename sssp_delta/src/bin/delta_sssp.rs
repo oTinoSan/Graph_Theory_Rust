@@ -110,13 +110,26 @@ fn main() {
         heavy_bucket.add_set(i);
     }
 
-    while idx < num_buckets {
-        for i in buckets[idx].data.iter() {
-            heavy_bucket.add_set(i);
-            let dist_get = distributed_map.get(k);
-            get.
-            distributed_map.visit(k, v)
-        
+        while idx < num_buckets {
+            for i in buckets[idx].data.iter() {
+                heavy_bucket.add_set(i);
+                let map_clone = distributed_map.clone();
+                let adj_list = map_clone.get(i).await.expect("Expected value not found");
+                // iterates through each edge in adj_list
+                for (edge, weight) in adj_list.edges {
+                    if edge <= delta {
+                        let potential_tent = adj_list.tent + weight;
+                        distributed_map.relax_requests(i, potential_tent, delta);
+                    }
+                }
+            }
+        }
+
+
+            // let request = distributed_map.get(k);
+            // let result = distributed_map.block_on(request);
+            
+            
         map.async_visit(vertex, [](const auto &head, adj_list &head_info) {
             for (auto edge : head_info.edges) {
                 if (std::get<1>(edge) <= delta) {

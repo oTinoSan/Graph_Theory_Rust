@@ -74,8 +74,21 @@ impl DistHashMap {
         )
     }
 
-}
+    // k = node, v = potential_tent, d = delta
+    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) {
+        let dest_pe = self.get_key_pe(*k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Relax(*k, v, d),
+            },
+        );
+    }
+        
+    }
 
+    
 // this is one way we can implement commands for the distributed hashmap
 // a maybe more efficient way to do this would be to create an individual
 // active message for each command
@@ -85,6 +98,7 @@ enum DistCmd {
     Add(i32, AdjList),
     Get(i32),
     Visit(i32, f32),
+    Relax(i32, f32, f32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +106,7 @@ pub enum DistCmdResult {
     Add,
     Get(AdjList),
     Visit(Option<AdjList>),
+    Relax,
 }
 
 #[AmData(Debug, Clone)]
@@ -123,10 +138,24 @@ impl LamellarAM for DistHashMapOp {
                     DistCmdResult::Visit(None)
                 }
             }
+            DistCmd::Relax(k, potential_tent, delta) => {
+                let mut data = self.data.write().await;
+                if let Some(adj_list) = data.get_mut(&k) {
+                    if potential_tent < &adj_list.tent {
+                        adj_list.tent = *potential_tent;
+                        let idx = (adj_list.tent as f64 / *delta as f64).floor() as i32;
+                        DistCmdResult::Relax
+                    } else {
+                        DistCmdResult::Visit(None)
+                    }
+                } else {
+                    DistCmdResult::Relax
+                }
+            }
         }
     }
 }
-
+        
 fn main() {
     let world = lamellar::LamellarWorldBuilder::new().build();
     let my_pe = world.my_pe();
