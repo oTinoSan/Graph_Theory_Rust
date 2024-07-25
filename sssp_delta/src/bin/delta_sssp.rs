@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
+use mpi::*;
 use sssp_delta::dist_hash_map::*; 
 use sssp_delta::dist_hash_set::*;
 
@@ -36,7 +37,7 @@ fn main() {
     let num_pes = world.num_pes();
     world.barrier();
 
-    let buckets: Vec<DistHashSet<usize>> = Vec::new();
+    let buckets: Vec<DistHashSet> = Vec::new();
     let distributed_map = DistHashMap::new(&world, num_pes);
     
     // placeholder, and will need to be changed
@@ -58,7 +59,7 @@ fn main() {
     // start timing
     let beg = Instant::now();
     // placeholder for rmat generation
-    generate_rmat_graph(&world, &mut map, rmat_scale, &mut max_weight);
+    // generate_rmat_graph(&world, &mut map, rmat_scale, &mut max_weight);
     // end timing
     let end = Instant::now();
     let duration = end.duration_since(beg);
@@ -87,7 +88,7 @@ fn main() {
     
     // start timing  buckets.emplace_back(world);
     let beg = Instant::now();
-    let idx: u64 = 0;
+    let idx: usize = 0;
 
     // complete a source relaxation --------------------------------------------------------------------------------------
     // relax the source
@@ -109,7 +110,6 @@ fn main() {
     for i in buckets[idx].data.iter() {
         heavy_bucket.add_set(i);
     }
-
         while idx < num_buckets {
             for i in buckets[idx].data.iter() {
                 heavy_bucket.add_set(i);
@@ -119,7 +119,9 @@ fn main() {
                 for (edge, weight) in adj_list.edges {
                     if edge <= delta {
                         let potential_tent = adj_list.tent + weight;
-                        distributed_map.relax_requests(i, potential_tent, delta);
+                        let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
+                        // what do we add to the set??????
+                        buckets[new_idx as usize].add_set(i);
                     }
                 }
             }
@@ -129,15 +131,6 @@ fn main() {
             // let request = distributed_map.get(k);
             // let result = distributed_map.block_on(request);
             
-            
-        map.async_visit(vertex, [](const auto &head, adj_list &head_info) {
-            for (auto edge : head_info.edges) {
-                if (std::get<1>(edge) <= delta) {
-                    float potential_tent = head_info.tent + std::get<1>(edge);
-                    relax_requests_lambda(std::get<0>(edge), potential_tent);
-                }
-            }
-        });
 
     }
    
@@ -148,18 +141,3 @@ fn main() {
     // need to decide where vertex is
     // bucket_copy.set_insert(vertex);
 
-
-
-
-    static auto fill_bucket_copy_lambda = [&bucket_copy](const auto &vertex) {
-    // if the vertex is not already in the copy bucket, add it
-        bucket_copy.async_insert(vertex);
-    };
-
-    buckets[idx].for_all([](const auto &vertex) {
-        fill_bucket_copy_lambda(vertex);
-    });
-
-    }
-
-    let buckets: Vec<HashSet<usize>> = Vec::new();

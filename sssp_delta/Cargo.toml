@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 lamellar = "0.6.1"
-# mpi = "0.8.0"
+mpi = "0.8.0"
 rayon = "1.10.0"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0"

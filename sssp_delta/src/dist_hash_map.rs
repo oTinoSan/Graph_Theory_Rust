@@ -106,7 +106,7 @@ pub enum DistCmdResult {
     Add,
     Get(AdjList),
     Visit(Option<AdjList>),
-    Relax,
+    Relax(Option<i32>),
 }
 
 #[AmData(Debug, Clone)]
@@ -144,17 +144,18 @@ impl LamellarAM for DistHashMapOp {
                     if potential_tent < &adj_list.tent {
                         adj_list.tent = *potential_tent;
                         let idx = (adj_list.tent as f64 / *delta as f64).floor() as i32;
-                        DistCmdResult::Relax
+                        DistCmdResult::Relax(Some(idx))
                     } else {
                         DistCmdResult::Visit(None)
                     }
                 } else {
-                    DistCmdResult::Relax
+                    DistCmdResult::Relax(None)
+                }
                 }
             }
         }
-    }
 }
+
         
 fn main() {
     let world = lamellar::LamellarWorldBuilder::new().build();
