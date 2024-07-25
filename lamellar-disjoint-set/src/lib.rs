@@ -42,6 +42,10 @@ impl DisjointSet {
         self.vertices.pe_and_offset_for_global_index(vertex as usize).unwrap().0
     }
 
+    fn get_vertex_local_index(&self, vertex: u64) -> usize {
+        self.vertices.pe_and_offset_for_global_index(vertex as usize).unwrap().1
+    }
+
     pub fn add_edge(&self, edge: Edge) -> impl Future<Output = ()> {
         let edge_pe = self.get_edge_pe(&edge);
         let u_pe = self.get_vertex_pe(edge.0);
@@ -61,6 +65,16 @@ impl DisjointSet {
 
     pub fn add_new_vertex(&self, v: u64) -> impl Future<Output = ()> {
         self.vertices.store(v as usize, Vertex {parent: v, rank: 0})
+    }
+
+    fn process_local(&self) {
+        self.team.barrier();
+
+    }
+
+    fn local_union(&self, edge: Edge) -> bool {
+        
+        todo!()
     }
 }
 
