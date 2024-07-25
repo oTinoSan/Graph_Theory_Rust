@@ -30,15 +30,16 @@ pub enum EdgeType {
 
 impl lamellar::memregion::Dist for EdgeType {}
 
-#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default)]
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, lamellar::ArrayOps, Default, Eq)]
 pub struct Vertex {
+    pub value: u64,
     pub parent: u64,
     pub rank: usize,
 }
 
 impl PartialEq for Vertex {
     fn eq(&self, other: &Self) -> bool {
-        self.parent == other.parent
+        self.value == other.value && self.parent == other.parent && self.rank == other.rank
     }
 }
 
