@@ -88,26 +88,65 @@ impl DisjointSet {
         })
     }
 
+    /// Adds a disconnected vertex to the disjoint set
     pub fn add_new_vertex(&self, v: u64) -> impl Future<Output = ()> {
         self.vertices.store(v as usize, Vertex {value: v, parent: v, rank: 0})
     }
 
-    fn process_spanning_edges(&self) {
+    /// prune the non-local edges from the list of potentials
+    /// blocking call
+    fn process_nonlocal_edges(&self) {
+        let mut potential_edges = Vec::new();
+        std::mem::swap(&mut **self.team.block_on(self.spanning_tree.write()), &mut potential_edges);
+        self.team.barrier();
+        let mut futures = Vec::new();
+        let my_pe = self.team.my_pe();
+        for edge in potential_edges.iter() {
+            let a = if self.get_vertex_pe(edge.0) == my_pe {
+                self.vertices.local_data().at(self.get_vertex_local_index(edge.0)).load()
+            } else {
+                Vertex {value: edge.0, parent: edge.0, rank: 0}
+            };
+            let b = if self.get_vertex_pe(edge.1) == my_pe {
+                self.vertices.local_data().at(self.get_vertex_local_index(edge.1)).load()
+            } else {
+                Vertex {value: edge.1, parent: edge.1, rank: 0}
+            };
+            futures.push(self.team.exec_am_pe(self.get_vertex_pe(edge.0), FindUnionAM {edge: *edge, a, b, vertices: self.vertices.clone()}));
+        }
+        for (edge, future) in potential_edges.into_iter().zip(futures) {
+            if self.team.block_on(future) {
+                self.team.block_on(self.spanning_tree.write()).push(edge);
+            }
+        }
+    }
+
+    /// empty the list of non-local edges for the spanning tree, then calculate
+    /// which of those edges are potentially in the global spanning tree
+    fn nonlocal_spanning_tree(&self) {
         let mut spanning_tree = self.team.block_on(self.spanning_tree.write());
         spanning_tree.clear();
         let mut ghost_connections: HashMap<u64, HashSet<u64>> = HashMap::new();
         let my_pe = self.team.my_pe();
         for edge in self.team.block_on(self.spanning_edges.read()).iter() {
             if self.get_vertex_pe(edge.0) == my_pe {
-                if ghost_connections.entry(edge.1).or_insert_with(HashSet::new).insert(self.find_local_root(edge.0)) {
+                if ghost_connections.entry(edge.1).or_default().insert(self.find_local_root(edge.0)) {
                     spanning_tree.push(*edge);
                 }
             } else if self.get_vertex_pe(edge.1) == my_pe {
-                if ghost_connections.entry(edge.0).or_insert_with(HashSet::new).insert(self.find_local_root(edge.1)) {
+                if ghost_connections.entry(edge.0).or_default().insert(self.find_local_root(edge.1)) {
                     spanning_tree.push(*edge);
                 }
             } else {
-
+                let mut u_conns = ghost_connections.remove(&edge.0).unwrap_or_default();
+                let mut v_conns = ghost_connections.remove(&edge.1).unwrap_or_default();
+                if u_conns.is_disjoint(&v_conns) {
+                    u_conns = u_conns.union(&v_conns).copied().collect();
+                    v_conns = u_conns.clone();
+                    ghost_connections.insert(edge.0, u_conns);
+                    ghost_connections.insert(edge.1, v_conns);
+                    spanning_tree.push(*edge);
+                }
             }
         }
     }
@@ -176,14 +215,19 @@ impl DisjointSet {
     /// uses lamellar array operations, could be faster to use local data references instead?
     fn find_local_root(&self, mut vertex: u64) -> u64 {
         let mut parent = self.team.block_on(self.vertices.at(vertex as usize));
-        while self.get_vertex_pe(parent.value) == self.team.my_pe() {
+        let my_pe = self.team.my_pe();
+        while self.get_vertex_pe(parent.value) == my_pe {
             vertex = parent.value;
             parent = self.team.block_on(self.vertices.at(parent.parent as usize));
+            if vertex == parent.value {
+                break;
+            }
         }
         vertex
     }
 }
 
+/// Active message to add an edge to the graph
 #[AmData(Clone, Debug)]
 pub struct AddEdgeAM {
     edges: LocalRwDarc<Vec<Edge>>,
@@ -202,4 +246,127 @@ impl LamellarAM for AddEdgeAM {
         drop(ghost_writer);
         self.edges.write().await.push(self.edge);
     }
+}
+
+/// Active message for the Find-Union operation described in Manne-Patwari 2010
+#[AmData(Clone, Debug)]
+pub struct FindUnionAM {
+    edge: Edge,
+    a: Vertex,
+    b: Vertex,
+    vertices: AtomicArray<Vertex>,
+}
+
+#[am]
+impl LamellarAm for FindUnionAM {
+    async fn exec(self) -> bool {
+        let mut r = true;
+
+        // these operations could be performed on the local data instead of using the lamellar
+        // array interface, which may provide better performance (and avoids awaiting the results)
+        let mut a = find_local_root(&self.vertices, self.a).await;
+        let mut b = find_local_root(&self.vertices, self.b).await;
+
+        // loop becomes relevant if a or b change during the execution of the function (due to parallel nature of the code)
+        loop {
+            if a.value == b.value {
+                // if a and b are the same, then the edge is not needed in the global spanning tree
+                r = false;
+                break;
+            } else if a.parent == a.value && a.rank < b.rank && get_vertex_pe(&self.vertices, a.value) == lamellar::current_pe {
+                // if a is a global root, and of lower rank than b, then b becomes the parent of a
+                let new_a = Vertex {parent: b.value, .. a};
+                if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, a.value)).compare_exchange(a, new_a).is_ok() {
+                    break
+                }
+            } else if b.parent == b.value && b.rank < a.rank && get_vertex_pe(&self.vertices, b.value) == lamellar::current_pe {
+                // inverse of above, if b is a global root and of lower rank than a, a becomes the parent of b
+                let new_b = Vertex {parent: a.value, .. b};
+                if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, b.value)).compare_exchange(b, new_b).is_ok() {
+                    break
+                }
+            } else if a.parent == a.value && b.parent == b.value && get_vertex_pe(&self.vertices, a.value) == lamellar::current_pe {
+                // if both a and b are global roots, and of the same rank, and a is local to the calling pe, check which of a and b has a lower value
+                // if b has a lower value, swap a and b so that a has the lower value
+                if b.value < a.value {
+                    std::mem::swap(&mut a, &mut b);
+                    // if the swapped a value is not local to the calling pe, go back through the loop
+                    if get_vertex_pe(&self.vertices, a.value) != lamellar::current_pe {
+                        continue;
+                    }
+                }
+                // if the swapped value is still local, try to swap a for an updated version (with the parent being b)
+                let new_a = Vertex {parent: b.value, .. a};
+                if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, a.value)).compare_exchange(a, new_a).is_ok() {
+                    // if that swap is made, increase the rank of b by 1, and potentially its parents if it has ceased to be a global root
+                    let _ = self.vertices.team().exec_am_pe(get_vertex_pe(&self.vertices, b.value), IncreaseRankAM {vertices: self.vertices.clone(), v: b});
+                    break;
+                }
+            } else {
+                // this branch is reached if either of a or b is not a global root
+                // if b is not a global root, swap a and b
+                if b.parent != b.value {
+                    std::mem::swap(&mut a, &mut b);
+                }
+                // perform a Find-Union operation on the vertices a and b, on the processing element owning the parent of a
+                // the result here (whether the edge should be included) becomes the result of that operation
+                r = self.vertices.team().exec_am_pe(get_vertex_pe(&self.vertices, a.parent), FindUnionAM {edge: self.edge, a, b, vertices: self.vertices.clone()}).await;
+                break;
+            }
+
+            // moreso than above, these should likely be changed to operate on the local data of the vertices array
+            a = find_local_root(&self.vertices, a).await;
+            b = find_local_root(&self.vertices, b).await;
+        }
+        r
+    }
+}
+
+/// Active message used to maintain monotonically increasing ranks in the pointer graph
+#[AmData(Clone, Debug)]
+pub struct IncreaseRankAM {
+    vertices: AtomicArray<Vertex>,
+    v: Vertex,
+}
+
+#[am]
+impl LamellarAM for IncreaseRankAM {
+    async fn exec(self) {
+        let v_index = get_vertex_local_index(&self.vertices, self.v.value);
+        let v_elem = self.vertices.local_data().at(v_index);
+        let mut v = self.v;
+        loop {
+            let new_v = Vertex {rank: self.v.rank + 1, .. v};
+            match v_elem.compare_exchange(v, new_v) {
+                Ok(_) => break,
+                Err(new_v) => v = new_v
+            }
+        }
+        if v.parent != v.value {
+            let _ = self.vertices.team().exec_am_pe(get_vertex_pe(&self.vertices, v.parent), IncreaseRankAM {vertices: self.vertices.clone(), v: self.vertices.at(v.parent as usize).await});
+        }
+    }
+}
+
+fn get_vertex_pe<T>(vertices: &T, vertex: u64) -> usize where T: LamellarArray<Vertex> {
+    vertices.pe_and_offset_for_global_index(vertex as usize).unwrap().0
+}
+
+fn get_vertex_local_index<T>(vertices: &T, vertex: u64) -> usize where T: LamellarArray<Vertex> {
+    vertices.pe_and_offset_for_global_index(vertex as usize).unwrap().1
+}
+
+
+/// asynchronous function to find the local root of a given vertex
+/// requires a reference to the array of vertices and the vertex to find the root of
+/// if the parent of vertex is not local to the calling pe, will return the original vertex unchanged
+async fn find_local_root<T>(vertices: &T, mut vertex: Vertex) -> Vertex where T: LamellarArray<Vertex> + LamellarArrayGet<Vertex> {
+    let my_pe = vertices.team_rt().my_pe();
+    while get_vertex_pe(vertices, vertex.parent) == my_pe {
+        vertex = vertices.at(vertex.parent as usize).await;
+        if vertex.value == vertex.parent {
+            break;
+        }
+    }
+    vertex
 }
