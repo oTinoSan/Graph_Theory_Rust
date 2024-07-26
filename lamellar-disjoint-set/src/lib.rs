@@ -88,12 +88,38 @@ impl DisjointSet {
         })
     }
 
+    /// processes the local and non-local edges in two steps according to the process described
+    /// in Manne-Patwary 2010
+    /// 
+    /// blocking call
+    pub fn process_edges(&self) {
+        self.team.barrier();
+        self.process_local_edges();
+        self.team.barrier();
+        self.process_nonlocal_edges();
+        self.team.barrier();
+    }
+
     /// Adds a disconnected vertex to the disjoint set
     pub fn add_new_vertex(&self, v: u64) -> impl Future<Output = ()> {
         self.vertices.store(v as usize, Vertex {value: v, parent: v, rank: 0})
     }
 
+    pub fn get_spanning_tree(&self) -> Vec<Edge> {
+        let local_trees = self.team.exec_am_all(GetEdgeVectorAM{edges: self.local_tree.clone()});
+        let nonlocal_edges = self.team.exec_am_all(GetEdgeVectorAM {edges: self.spanning_edges.clone()});
+        let mut spanning_tree: Vec<_> = self.team.block_on(local_trees).into_iter().flatten().collect();
+        spanning_tree.extend(self.team.block_on(nonlocal_edges).into_iter().flatten());
+        spanning_tree
+    }
+
+    /// blocking call
+    pub fn print_vertices(&self) {
+        self.vertices.print();
+    }
+
     /// prune the non-local edges from the list of potentials
+    /// 
     /// blocking call
     fn process_nonlocal_edges(&self) {
         let mut potential_edges = Vec::new();
@@ -163,6 +189,7 @@ impl DisjointSet {
     }
 
     /// perform a union and splice for a given edge, returns true if a root union was performed
+    /// 
     /// edge must be local or there will be problems
     fn local_union_splice(&self, edge: &Edge) -> bool {
         let local_vertices = self.vertices.mut_local_data();
@@ -212,6 +239,7 @@ impl DisjointSet {
     }
 
     /// finds the local root of a given vertex
+    /// 
     /// uses lamellar array operations, could be faster to use local data references instead?
     fn find_local_root(&self, mut vertex: u64) -> u64 {
         let mut parent = self.team.block_on(self.vertices.at(vertex as usize));
@@ -348,6 +376,18 @@ impl LamellarAM for IncreaseRankAM {
     }
 }
 
+#[AmData(Clone, Debug)]
+pub struct GetEdgeVectorAM {
+    edges: LocalRwDarc<Vec<Edge>>
+}
+
+#[am]
+impl LamellarAM for GetEdgeVectorAM {
+    async fn exec(self) -> Vec<Edge> {
+        Vec::clone(&self.edges.team().block_on(self.edges.read()))
+    }
+}
+
 fn get_vertex_pe<T>(vertices: &T, vertex: u64) -> usize where T: LamellarArray<Vertex> {
     vertices.pe_and_offset_for_global_index(vertex as usize).unwrap().0
 }
@@ -358,7 +398,9 @@ fn get_vertex_local_index<T>(vertices: &T, vertex: u64) -> usize where T: Lamell
 
 
 /// asynchronous function to find the local root of a given vertex
+/// 
 /// requires a reference to the array of vertices and the vertex to find the root of
+/// 
 /// if the parent of vertex is not local to the calling pe, will return the original vertex unchanged
 async fn find_local_root<T>(vertices: &T, mut vertex: Vertex) -> Vertex where T: LamellarArray<Vertex> + LamellarArrayGet<Vertex> {
     let my_pe = vertices.team_rt().my_pe();
