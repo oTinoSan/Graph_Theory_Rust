@@ -11,20 +11,19 @@ use mpi::*;
 use sssp_delta::dist_hash_map::*; 
 use sssp_delta::dist_hash_set::*;
 
-// arg[0] = executable
-// arg[1] = rmat_scale
-// arg[2] = num_buckets
-// arg[3] = delta
+/* 
+arg[0] = executable
+arg[1] = rmat_scale
+arg[2] = num_buckets
+arg[3] = delta
 
 
-
-// fn generate_rmat_graph(
-//     world: &(), // placeholder for ygm::comm equivalent
-//     map: &Mutex<HashMap<usize, AdjList>>,
-//     rmat_scale: usize,
-//     max_weight: &mut f32,
-// ) {
-    // ... implementation of RMAT graph generation ...
+fn generate_rmat_graph(
+    world: &(), // placeholder for ygm::comm equivalent
+    map: &Mutex<HashMap<usize, AdjList>>,
+    rmat_scale: usize,
+    max_weight: &mut f32,
+*/
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -176,7 +175,5 @@ fn main() {
     println!("{}, {}", node, adj_matrix.tent);
     }
 }
-
-    
 
 
