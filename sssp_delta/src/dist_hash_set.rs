@@ -52,18 +52,18 @@ impl DistHashSet {
         )
     }
   
-   pub fn consume_set(&self, k: i32, t: f64) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
-        self.team.exec_am_pe(
-            dest_pe,
-            DistHashSetOp {
-                data: self.data.clone(),
-                cmd: DistCmd::Consume(k, t),
-            },
-        )
-    }
+//    pub fn consume_set(&self, k: i32, t: f64) -> impl Future<Output = DistCmdResult> {
+//         let dest_pe = self.get_key_pe(k);
+//         self.team.exec_am_pe(
+//             dest_pe,
+//             DistHashSetOp {
+//                 data: self.data.clone(),
+//                 cmd: DistCmd::Consume(k, t),
+//             },
+//         )
+//     }
 
-    fn erase(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+    pub fn erase_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -85,7 +85,7 @@ enum DistCmd {
     Add(i32),
     Get(i32),
     Erase(i32),
-    Consume(i32, f64),
+    // Consume(i32, f64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +93,7 @@ pub enum DistCmdResult {
     Add,
     Get(i32),
     Erase,
-    Consume,
+    // Consume,
 }
 
 #[AmData(Debug, Clone)]
@@ -120,17 +120,19 @@ impl LamellarAM for DistHashSetOp {
                 self.data.write().await.remove(k);
                 DistCmdResult::Erase
             }
-            DistCmd::Consume(k, tent_val) => {
-                let mut data = self.data.write().await;
-                if let Some(adj_list) = data.get(&k).cloned() {
-                    if tent_val != adj_list.tent {
-                        self.data.write().await.remove(k);
-                    }
-                    DistCmdResult::Consume
-                } else {
-                    DistCmdResult::Consume 
-                }
-            }
+            // DistCmd::Consume(k, tent_val) => {
+            //     let mut data = self.data.write().await;
+            //     if let Some(adj_list) = data.get(&k).cloned() {
+            //         if tent_val != adj_list.tent {
+            //             // should update tent value?
+            //             self.data.write().await.remove(k);
+            //         }
+            //         DistCmdResult::Consume
+            //     } else {
+            //         self.data.write().await.remove(k);
+            //         DistCmdResult::Consume 
+            //     }
+            // }
         }
     }
 }
