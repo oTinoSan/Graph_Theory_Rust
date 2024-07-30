@@ -124,7 +124,7 @@ fn main() {
                     let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
                     buckets[new_idx as usize].add_set(i);
                     if potential_tent != distributed_map.visit(i, potential_tent) {
-                        buckets[new_idx].erase_set(i);
+                        buckets[i].erase_set(i);
                     }
                 }
             }
@@ -139,11 +139,11 @@ fn main() {
                     let potential_tent = adj_list.tent + weight;
                     let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
                     buckets[new_idx as usize].add_set(i);
-                    if potential_tent != distributed_map.visit(i, potential_tent) {
-                        heavy_bucket.erase_set(i);
+                    heavy_bucket.erase_set(i);
                 }
             }
         }
+
     world.barrier();
     // done with this bucket
     idx += 1;
