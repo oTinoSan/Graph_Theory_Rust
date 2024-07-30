@@ -122,17 +122,15 @@ impl LamellarAM for DistHashSetOp {
             }
             DistCmd::Consume(k, tent_val) => {
                 let mut data = self.data.write().await;
-                if let Some(adj_list) = data.get_mut(&k) {
+                if let Some(adj_list) = data.get(&k).cloned() {
                     if tent_val != adj_list.tent {
                         self.data.write().await.remove(k);
-                        DistCmdResult::Consume
-                    } else {
-                        DistCmdResult::Consume
                     }
                     DistCmdResult::Consume
+                } else {
+                    DistCmdResult::Consume 
                 }
             }
-
         }
     }
 }
