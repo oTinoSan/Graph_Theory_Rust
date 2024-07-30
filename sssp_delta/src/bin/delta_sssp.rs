@@ -177,7 +177,7 @@ fn main() {
     for (node, adj_matrix) in distributed_map.iter() {
     println!("{}, {}", node, adj_matrix.tent);
     }
-        }
+
 }
 
 
