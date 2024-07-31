@@ -75,7 +75,7 @@ impl DistHashMap {
     }
 
     // k = node, v = potential_tent, d = delta
-    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) {
+    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(*k);
         self.team.exec_am_pe(
             dest_pe,
@@ -83,7 +83,7 @@ impl DistHashMap {
                 data: self.data.clone(),
                 cmd: DistCmd::Relax(*k, v, d),
             },
-        );
+        )
     }
         
     }
@@ -115,7 +115,7 @@ struct DistHashMapOp {
     cmd: DistCmd,
 }
 
-#[am]
+#[lamellar::am]
 impl LamellarAM for DistHashMapOp {
     async fn exec(self) -> DistCmdResult {
         match &self.cmd {
@@ -146,7 +146,7 @@ impl LamellarAM for DistHashMapOp {
                         let idx = (adj_list.tent as f64 / *delta as f64).floor() as i32;
                         DistCmdResult::Relax(Some(idx))
                     } else {
-                        DistCmdResult::Visit(None)
+                        DistCmdResult::Relax(None)
                     }
                 } else {
                     DistCmdResult::Relax(None)

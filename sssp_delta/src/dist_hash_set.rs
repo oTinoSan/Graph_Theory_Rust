@@ -15,7 +15,6 @@ pub struct DistHashSet {
     pub data: LocalRwDarc<HashSet<i32>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
 } 
 
-
 impl DistHashSet {
     pub fn new(world: &LamellarWorld,  num_pes: usize) -> Self {
         let team = world.team();
@@ -26,23 +25,12 @@ impl DistHashSet {
         }
     }
 
-    fn get_key_pe(&self, k: i32) -> usize {
+    pub fn init_dist_set(&self, k: i32) -> usize {
         k as usize % self.num_pes
     }
 
-    pub fn get_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
-        self.team.exec_am_pe(
-            dest_pe,
-            DistHashSetOp {
-                data: self.data.clone(),
-                cmd: DistCmd::Get(k),
-            },
-        )
-    }
-
     pub fn add_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
+        let dest_pe = k as usize % self.num_pes;
         self.team.exec_am_pe(
             dest_pe,
             DistHashSetOp {
@@ -50,6 +38,18 @@ impl DistHashSet {
                 cmd: DistCmd::Add(k),
             },
         )
+    }
+
+    pub async fn empty_set(&self) {
+        for dest_pe in 0..self.num_pes {
+            self.team.exec_am_pe(
+                dest_pe,
+                DistHashSetOp {
+                    data: self.data.clone(),
+                    cmd: DistCmd::Empty(),
+                },
+            ).await;
+        } self.team.wait_all();
     }
   
 //    pub fn consume_set(&self, k: i32, t: f64) -> impl Future<Output = DistCmdResult> {
@@ -63,8 +63,8 @@ impl DistHashSet {
 //         )
 //     }
 
-    pub fn erase_set(&self, k: i32) -> impl Future<Output = DistCmdResult> {
-        let dest_pe = self.get_key_pe(k);
+    pub fn erase_set_item(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.init_dist_set(k);
         self.team.exec_am_pe(
             dest_pe,
             DistHashSetOp {
@@ -83,16 +83,16 @@ impl DistHashSet {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DistCmd {
     Add(i32),
-    Get(i32),
     Erase(i32),
+    Empty(),
     // Consume(i32, f64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
-    Get(i32),
     Erase,
+    Empty,
     // Consume,
 }
 
@@ -102,7 +102,7 @@ struct DistHashSetOp {
     cmd: DistCmd,
 }
 
-#[am]
+#[lamellar::am]
 impl LamellarAM for DistHashSetOp {
     async fn exec(self) -> DistCmdResult {
         match &self.cmd {
@@ -110,16 +110,15 @@ impl LamellarAM for DistHashSetOp {
                 self.data.write().await.insert(*k);
                 DistCmdResult::Add
             }
-            DistCmd::Get(k) => {
-                let data = self.data.read().await;
-                let v = data.get(k).cloned();
-                println!("{:?}", v.unwrap());
-                DistCmdResult::Get(v.unwrap())
-            }
             DistCmd::Erase(k) => {
                 self.data.write().await.remove(k);
                 DistCmdResult::Erase
             }
+            DistCmd::Empty() => {
+                self.data.write().await.clear();
+                DistCmdResult::Empty
+            }
+
             // DistCmd::Consume(k, tent_val) => {
             //     let mut data = self.data.write().await;
             //     if let Some(adj_list) = data.get(&k).cloned() {

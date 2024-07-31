@@ -103,7 +103,7 @@ struct DistHashMapOp {
     cmd: DistCmd,
 }
 
-#[am]
+#[lamellar::am]
 impl LamellarAM for DistHashMapOp {
     async fn exec(self) -> DistCmdResult {
         match &self.cmd {

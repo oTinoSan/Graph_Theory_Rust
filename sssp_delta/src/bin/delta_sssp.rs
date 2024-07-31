@@ -1,13 +1,11 @@
 use lamellar::active_messaging::prelude::*;
 use lamellar::darc::prelude::*;
-use traits::CommunicatorCollectives;
 use std::env::{self, args};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
-use mpi::*;
 use sssp_delta::dist_hash_map::*; 
 use sssp_delta::dist_hash_set::*;
 
@@ -39,12 +37,16 @@ fn main() {
 
     let buckets: Vec<DistHashSet> = Vec::new();
     let distributed_map = DistHashMap::new(&world, num_pes);
+
+    ////////////////////////////
+    // placeholder variables //
+    //////////////////////////
     
-    // placeholder, and will need to be changed
     let mut num_buckets: usize = 0;
     let mut delta: f32 = 3.0;
-    let mut max_weight: f32 = 0.0; // max shortest path, use 21 for testing
+    let mut max_weight: f32 = 0.0;
     let max_degree: f32;
+    let inf = f32::INFINITY;
 
     if args.len() >= 3 {
         // num_buckets = args[1].parse().expect("Error parsing num_buckets");
@@ -72,45 +74,121 @@ fn main() {
         delta = args[3].parse::<f32>().unwrap();
     }
 
-    // compute total elapsed time
-    let duration = end.duration_since(beg);
-    let time = duration.as_micros() as u64;
-    let universe = mpi::initialize().unwrap();
-    let world = universe.world();
-    let mut global_max_time = 0_u64;
-    world.all_reduce_into(&time, &mut global_max_time, SystemOperation::max());
+    ///////////////////////////
+    // compute elapsed time //
+    /////////////////////////
 
+    // use std::sync::atomic::{AtomicU64, Ordering};
+    // use std::sync::Arc;
+    // use std::thread;
+    // use std::time::{Duration, Instant};
+    
+    //     let beg = Instant::now();
+    //     // Simulate some work
+    //     thread::sleep(Duration::from_millis(100));
+    //     let end = Instant::now();
+    
+    //     let duration = end.duration_since(beg);
+    //     let time = duration.as_micros() as u64;
+    
+    //     // Shared atomic variable to store the global maximum time
+    //     let global_max_time = Arc::new(AtomicU64::new(0));
+    
+    //     // Number of threads to simulate
+    //     let num_threads = 4;
+    //     let mut handles = vec![];
+    
+    //     for _ in 0..num_threads {
+    //         let global_max_time = Arc::clone(&global_max_time);
+    //         let time = time;
+    
+    //         let handle = thread::spawn(move || {
+    //             // Simulate some work
+    //             thread::sleep(Duration::from_millis(50));
+    
+    //             // Update the global maximum time
+    //             global_max_time.fetch_max(time, Ordering::SeqCst);
+    //         });
+    
+    //         handles.push(handle);
+    //     }
+    
+    //     // Wait for all threads to finish
+    //     for handle in handles {
+    //         handle.join().unwrap();
+    //     }
+    
+    //     // Get the global maximum time
+    //     let global_max_time = global_max_time.load(Ordering::SeqCst);
+    //     println!("Global max time: {}", global_max_time);
 
-    // Add the sets to the vector
-    for _ in 0..num_buckets {
-        let init_bucket_set= DistHashSet::new(&world, num_pes);
-        buckets.push(init_bucket_set); 
+    //////////////////////////////////////
+    // create world and ditributed map //
+    ////////////////////////////////////
+    
+    let world = lamellar::LamellarWorldBuilder::new().build();
+    let my_pe = world.my_pe();
+    let num_pes = world.num_pes();
+    world.barrier();
+    let distributed_map = DistHashMap::new(&world, num_pes);
+    let adj_list = AdjList {
+        edges: vec![(1, 0.5), (2, 1.2), (3, 0.8)],
+        tent: 2.5,
+    };
+
+    ////////////////////////////////////////////////////////////
+    // set up nodes and pe's, set tent distances to infinity //
+    //////////////////////////////////////////////////////////
+    
+    for i in 0..10 {
+        let _ = distributed_map.add(i, adj_list.clone());
+        //set tentative distances to infinity
+        distributed_map.visit(i, inf);
+    };
+
+    ////////////////////////////////////////
+    // add the sets to the bucket vector //
+    //////////////////////////////////////
+    
+    for i in 0..num_buckets {
+        let new_bucket = DistHashSet::new(&world, num_pes);
+        new_bucket.add_set(i as i32);
     }
     
     // start timing  buckets.emplace_back(world);
     let beg = Instant::now();
     let idx: usize = 0;
 
-    // complete a source relaxation --------------------------------------------------------------------------------------
-    // relax the source
+
+    ///////////////////////
+    // relax the source //
+    /////////////////////
 
     world.block_on(async {
-        if let DistCmdResult::Visit(Some(updated_adj_list)) = distributed_map.visit(0, 0).await {    // visit(node, tent_val)
-            println!("{:?}", updated_adj_list);
-        }
-        else {
-            println!("Key does not exist")
-        }
+       distributed_map.visit(0, 0.0).await;
     });
     
     buckets[0].add_set(0);
+    
 
-    // duplicate the current bucket -----------------------------------------------------------
+    ///////////////////////////////////
+    // duplicate the current bucket //
+    /////////////////////////////////
+    
 
-    let heavy_bucket = DistHashSet::new(world, num_pes);
-    for i in buckets[idx].data.iter() {
-        heavy_bucket.add_set(i);
-    }
+    let heavy_bucket = DistHashSet::new(&world, num_pes);
+    world.block_on(async {
+        for i in buckets[idx].data.read().await.iter() {
+            heavy_bucket.add_set(*i);
+        }
+        }
+    );
+
+
+    //////////////////////////
+    // process the buckets //
+    ////////////////////////
+    
 
     while idx < num_buckets {
         for i in buckets[idx].data.iter() {
@@ -129,6 +207,10 @@ fn main() {
                 }
             }
         }
+
+    ///////////////////////////////
+    // process the heavy bucket //
+    /////////////////////////////
 
         for i in heavy_bucket.data.iter() {
             let map_clone = distributed_map.clone();
@@ -179,5 +261,4 @@ fn main() {
     }
 
 }
-
 

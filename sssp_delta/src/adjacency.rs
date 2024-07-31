@@ -6,7 +6,6 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Serialize, Deserialize)]
 struct AdjList {
@@ -82,26 +81,27 @@ async fn get_graph(
     Ok(())
 }
 
-#[lamellar::am]
-#[tokio::main]
-async fn main() -> io::Result<()> {
-    let world = LamellarWorldBuilder::new().build();
-    let mat = LamellarHashMap::new(world.clone());
-    let max_weight = LamellarAtomic::new(0.0);
+// #[lamellar::am]
+// impl LamellarAM for DistHashSetOp {
+//     async fn main() -> io::Result<()> {
+//         let world = LamellarWorldBuilder::new().build();
+//         let mat = LamellarHashMap::new(world.clone());
+//         let max_weight = LamellarAtomic::new(0.0);
 
-    // Accepting file path as a command-line argument
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: {} <path_to_data_csv>", args[0]);
-        std::process::exit(1);
-    }
-    let path = Path::new(&args[1]);
+//         // Accepting file path as a command-line argument
+//         let args: Vec<String> = std::env::args().collect();
+//         if args.len() < 2 {
+//             eprintln!("Usage: {} <path_to_data_csv>", args[0]);
+//             std::process::exit(1);
+//         }
+//         let path = Path::new(&args[1]);
 
-    // Proper error handling
-    if let Err(e) = get_graph(world, &mat, max_weight, path).await {
-        eprintln!("Error processing graph: {}", e);
-        return Err(e);
-    }
+//         // Proper error handling
+//         if let Err(e) = get_graph(world, &mat, max_weight, path).await {
+//             eprintln!("Error processing graph: {}", e);
+//             return Err(e);
+//         }
 
-    Ok(())
-}
+//         Ok(())
+//     }
+// }
