@@ -24,7 +24,7 @@ impl std::fmt::Display for AdjList {
 pub struct DistHashMap {
     num_pes: usize,
     team: Arc<LamellarTeam>,
-    data: LocalRwDarc<HashMap<i32, AdjList>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
+    pub data: LocalRwDarc<HashMap<i32, AdjList>>, //unforunately we can't use generics here due to constraints imposed by ActiveMessages
 }
 
 impl DistHashMap {
@@ -52,7 +52,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn get(&self, k: i32) -> impl Future<Output = DistCmdResult> {
+    pub fn get(&self, k: i32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -63,7 +63,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = DistCmdResult> {
+    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -75,7 +75,7 @@ impl DistHashMap {
     }
 
     // k = node, v = potential_tent, d = delta
-    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) -> impl Future<Output = DistCmdResult> {
+    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
         let dest_pe = self.get_key_pe(*k);
         self.team.exec_am_pe(
             dest_pe,
@@ -104,9 +104,9 @@ enum DistCmd {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
-    Get(AdjList),
+    Get(Option<AdjList>),
     Visit(Option<AdjList>),
-    Relax(Option<i32>),
+    Relax(Option<i32>), // Change the type of Relax arm to Option<AdjList>
 }
 
 #[AmData(Debug, Clone)]
@@ -117,25 +117,27 @@ struct DistHashMapOp {
 
 #[lamellar::am]
 impl LamellarAM for DistHashMapOp {
-    async fn exec(self) -> DistCmdResult {
+    async fn exec(self) -> Option<Result<i32, AdjList>> {
         match &self.cmd {
             DistCmd::Add(k, v) => {
                 self.data.write().await.insert(*k, v.clone());
-                DistCmdResult::Add
+                None
             }
             DistCmd::Get(k) => {
                 let data = self.data.read().await;
-                let v = data.get(k);
-                println!("{:?}", v.cloned());
-                DistCmdResult::Get(v.expect("error").clone())
+                if let Some(v) = data.get(k) {
+                    Some(Err(v.clone()))
+                } else {
+                    None
+                }
             }
             DistCmd::Visit(k, new_tent) => {
                 let mut data = self.data.write().await;
                 if let Some(adj_list) = data.get_mut(&k) {
                     adj_list.tent = *new_tent;
-                    DistCmdResult::Visit(Some(adj_list.clone())) 
+                    Some(Err(adj_list.clone()))
                 } else {
-                    DistCmdResult::Visit(None)
+                    None
                 }
             }
             DistCmd::Relax(k, potential_tent, delta) => {
@@ -144,16 +146,16 @@ impl LamellarAM for DistHashMapOp {
                     if potential_tent < &adj_list.tent {
                         adj_list.tent = *potential_tent;
                         let idx = (adj_list.tent as f64 / *delta as f64).floor() as i32;
-                        DistCmdResult::Relax(Some(idx))
+                        Some(Ok(idx))
                     } else {
-                        DistCmdResult::Relax(None)
+                        None
                     }
                 } else {
-                    DistCmdResult::Relax(None)
-                }
+                    None
                 }
             }
         }
+    }
 }
 
         
