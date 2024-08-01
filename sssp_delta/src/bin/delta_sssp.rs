@@ -215,11 +215,6 @@ fn main() {
         }
     });
     
-                    
-        world.barrier();
-        // done with this bucket
-        idx += 1;
-
         
     ///////////////////////////////
     // process the heavy bucket //
@@ -238,7 +233,19 @@ fn main() {
                 }
             }
         }
-        heavy_bucket.empty_set();
+
+        world.barrier();
+        // done with this bucket
+        idx += 1;
+
+
+    /////////////////////////
+    // empty heavy bucket //
+    ///////////////////////
+     
+    
+    heavy_bucket.empty_set();
+
     }
         
     // end timing
