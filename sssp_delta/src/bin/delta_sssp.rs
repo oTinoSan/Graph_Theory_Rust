@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
-use sssp_delta::dist_hash_map::*; 
+use sssp_delta::dist_hash_map::{DistHashMap, DistCmdResult, AdjList}; 
 use sssp_delta::dist_hash_set::*;
 
 /* 
@@ -183,95 +183,63 @@ fn main() {
         for i in buckets[idx].data.read().await.iter() {
             heavy_bucket.add_set(*i);
         }
-        }
-    );
+    });
 
 
     //////////////////////////
     // process the buckets //
     ////////////////////////
     
-    world.block_on(async {
-        while idx < num_buckets {
+    while idx < num_buckets {
+        world.block_on(async {
             for i in buckets[idx].data.read().await.iter() {
                 heavy_bucket.add_set(*i);
                 let map_clone = distributed_map.clone();
-                let adj_list = map_clone.get(*i).await;
-                // iterates through each edge in adj_list
-                for (edge, weight) in adj_list.edges {
-                    if edge <= delta {
-                        let potential_tent = adj_list.tent + weight;
-                        let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
-                        buckets[new_idx as usize].add_set(i);
-                        if potential_tent != distributed_map.visit(*i, potential_tent) {
-                            buckets[*i as usize].erase_set_item(*i);
+                // iterates through each edge in adj_list  
+                if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
+                for (edge, weight) in adj_list_result.edges {
+                    if edge as usize <= delta as usize {
+                        let potential_tent = adj_list_result.tent + weight as f32;
+                        if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
+                            buckets[new_idx as usize].add_set(*i);
+                            if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
+                            // check to see if get tent matches potential tent, if so, erase.
+                                if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, potential_tent).await {
+                                    buckets[*i as usize].erase_set_item(*i);
+                                }
+                            }
                         }
                     }
                 }
             }
-
-        ///////////////////////////////
-        // process the heavy bucket //world.block_on(async {
-        while idx < num_buckets {
-            for i in buckets[idx].data.read().await.iter() {
-                heavy_bucket.add_set(*i);
-                let map_clone = distributed_map.clone();
-                let adj_list = map_clone.get(*i).await;
-                // iterates through each edge in adj_list
-                for (edge, weight) in adj_list.edges {
-                    if edge <= delta {
-                        let potential_tent = adj_list.tent + weight;
-                        let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
-                        buckets[new_idx as usize].add_set(i);
-                        if potential_tent != distributed_map.visit(*i, potential_tent) {
-                            buckets[*i as usize].erase_set_item(*i);
-                        }
-                    }
-                }
-            }
-
-        ///////////////////////////////
-        // process the heavy bucket //
-        /////////////////////////////
-
-            for i in heavy_bucket.data.iter() {
-                let map_clone = distributed_map.clone();
-                let adj_list = map_clone.get(i).await.expect("Expected value not found");
-                // iterates through each edge in adj_list
-                for (edge, weight) in adj_list.edges {
-                    if edge > delta {
-                        let potential_tent = adj_list.tent + weight;
-                        let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
-                        buckets[new_idx as usize].add_set(i);
-                        heavy_bucket.erase_set_item(i);
-                    }
-                }
-            }
-
-        /////////////////////////////
-
-            for i in heavy_bucket.data.iter() {
-                let map_clone = distributed_map.clone();
-                let adj_list = map_clone.get(i).await.expect("Expected value not found");
-                // iterates through each edge in adj_list
-                for (edge, weight) in adj_list.edges {
-                    if edge > delta {
-                        let potential_tent = adj_list.tent + weight;
-                        let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
-                        buckets[new_idx as usize].add_set(i);
-                        heavy_bucket.erase_set_item(i);
-                    }
-                }
-            }
-
+        }
+    });
+    
+                    
         world.barrier();
         // done with this bucket
         idx += 1;
 
-        heavy_bucket.empty_set();
+        
+    ///////////////////////////////
+    // process the heavy bucket //
+    /////////////////////////////
+
+        for i in heavy_bucket.data.iter() {
+            let map_clone = distributed_map.clone();
+            let adj_list = map_clone.get(i).await.expect("Expected value not found");
+            // iterates through each edge in adj_list
+            for (edge, weight) in adj_list.edges {
+                if edge > delta {
+                    let potential_tent = adj_list.tent + weight;
+                    let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
+                    buckets[new_idx as usize].add_set(i);
+                    heavy_bucket.erase_set_item(i);
+                }
+            }
         }
+        heavy_bucket.empty_set();
     }
-);
         
     // end timing
     let end = Instant::now();

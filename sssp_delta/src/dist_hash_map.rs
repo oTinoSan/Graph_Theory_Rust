@@ -41,7 +41,7 @@ impl DistHashMap {
         k as usize % self.num_pes
     }
 
-    pub fn add(&self, k: i32, v: AdjList) -> impl Future {
+    pub fn add(&self, k: i32, v: AdjList) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -52,7 +52,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn get(&self, k: i32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
+    pub fn get(&self, k: i32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -63,7 +63,7 @@ impl DistHashMap {
         )
     }
 
-    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
+    pub fn visit(&self, k: i32, v: f32) -> impl Future<Output = DistCmdResult> {
         let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
@@ -75,18 +75,29 @@ impl DistHashMap {
     }
 
     // k = node, v = potential_tent, d = delta
-    pub fn relax_requests(&self, k: &i32, v: f32, d: f32) -> impl Future<Output = Option<Result<i32, AdjList>>> {
-        let dest_pe = self.get_key_pe(*k);
+    pub fn relax_requests(&self, k: i32, v: f32, d: f32) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
         self.team.exec_am_pe(
             dest_pe,
             DistHashMapOp {
                 data: self.data.clone(),
-                cmd: DistCmd::Relax(*k, v, d),
+                cmd: DistCmd::Relax(k, v, d),
             },
         )
     }
-        
-    }
+
+    // k = node, v = new_tent
+    pub fn compare_tent(&self, k: i32, v: f32) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::Compare(k, v)
+            },
+        )
+    }  
+}
 
     
 // this is one way we can implement commands for the distributed hashmap
@@ -99,14 +110,16 @@ enum DistCmd {
     Get(i32),
     Visit(i32, f32),
     Relax(i32, f32, f32),
+    Compare(i32, f32),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DistCmdResult {
     Add,
-    Get(Option<AdjList>),
-    Visit(Option<AdjList>),
-    Relax(Option<i32>), // Change the type of Relax arm to Option<AdjList>
+    Get(AdjList),
+    Visit,
+    Relax(i32),
+    Compare(bool),
 }
 
 #[AmData(Debug, Clone)]
@@ -117,41 +130,43 @@ struct DistHashMapOp {
 
 #[lamellar::am]
 impl LamellarAM for DistHashMapOp {
-    async fn exec(self) -> Option<Result<i32, AdjList>> {
+    async fn exec(self) -> DistCmdResult {
         match &self.cmd {
             DistCmd::Add(k, v) => {
                 self.data.write().await.insert(*k, v.clone());
-                None
+                DistCmdResult::Add
             }
             DistCmd::Get(k) => {
                 let data = self.data.read().await;
-                if let Some(v) = data.get(k) {
-                    Some(Err(v.clone()))
-                } else {
-                    None
-                }
+                let v = data.get(&k).cloned().unwrap();
+                DistCmdResult::Get(v)
             }
             DistCmd::Visit(k, new_tent) => {
                 let mut data = self.data.write().await;
-                if let Some(adj_list) = data.get_mut(&k) {
-                    adj_list.tent = *new_tent;
-                    Some(Err(adj_list.clone()))
-                } else {
-                    None
-                }
+                let adj_list = data.get_mut(&k);
+                adj_list.unwrap().tent = *new_tent;
+                DistCmdResult::Visit
             }
             DistCmd::Relax(k, potential_tent, delta) => {
                 let mut data = self.data.write().await;
-                if let Some(adj_list) = data.get_mut(&k) {
-                    if potential_tent < &adj_list.tent {
-                        adj_list.tent = *potential_tent;
-                        let idx = (adj_list.tent as f64 / *delta as f64).floor() as i32;
-                        Some(Ok(idx))
-                    } else {
-                        None
-                    }
+                let current_tent = data.get_mut(&k).unwrap().tent;
+                if potential_tent < &current_tent {
+                
+                    let idx = (current_tent as f64 / *delta as f64).floor() as i32;
+                    DistCmdResult::Relax(idx)
                 } else {
-                    None
+                    DistCmdResult::Relax(*k)
+                }
+            }
+
+            DistCmd::Compare(k, new_tent) => {
+                let data = self.data.read().await;
+                let v = data.get(&k).cloned().unwrap();
+                let current_tent = v.tent;
+                if current_tent != *new_tent {
+                    DistCmdResult::Compare(true)
+                } else {
+                    DistCmdResult::Compare(false)
                 }
             }
         }
@@ -159,31 +174,31 @@ impl LamellarAM for DistHashMapOp {
 }
 
         
-fn main() {
-    let world = lamellar::LamellarWorldBuilder::new().build();
-    let my_pe = world.my_pe();
-    let num_pes = world.num_pes();
-    world.barrier();
-    let distributed_map = DistHashMap::new(&world, num_pes);
-    let adj_list = AdjList {
-        edges: vec![(1, 0.5), (2, 1.2), (3, 0.8)],
-        tent: 2.5,
-    };
+// fn main() {
+//     let world = lamellar::LamellarWorldBuilder::new().build();
+//     let my_pe = world.my_pe();
+//     let num_pes = world.num_pes();
+//     world.barrier();
+//     let distributed_map = DistHashMap::new(&world, num_pes);
+//     let adj_list = AdjList {
+//         edges: vec![(1, 0.5), (2, 1.2), (3, 0.8)],
+//         tent: 2.5,
+//     };
 
-    for i in 0..10 {
-        // we can ignore the 'unused' result here because we call 'wait_all' below, otherwise to ensure each request completed we could use 'block_on'
-        let _ = distributed_map.add(i, adj_list.clone());
-    };
+//     for i in 0..10 {
+//         // we can ignore the 'unused' result here because we call 'wait_all' below, otherwise to ensure each request completed we could use 'block_on'
+//         let _ = distributed_map.add(i, adj_list.clone());
+//     };
 
 
-    world.wait_all();
-    world.barrier();
-    let map_clone = distributed_map.clone();
-    world.block_on(async move {
-        for i in 0..10 {
-            println!("{}: {:?}", i, map_clone.get(i).await);
-        }
-    });
+//     world.wait_all();
+//     world.barrier();
+//     let map_clone = distributed_map.clone();
+//     world.block_on(async move {
+//         for i in 0..10 {
+//             println!("{}: {:?}", i, map_clone.get(i).await);
+//         }
+//     });
 
 
     // world.barrier();
@@ -205,4 +220,4 @@ fn main() {
     //     }
     // });
 
-}
+// }
