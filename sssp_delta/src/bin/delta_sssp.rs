@@ -38,6 +38,7 @@ fn main() {
     let buckets: Vec<DistHashSet> = Vec::new();
     let distributed_map = DistHashMap::new(&world, num_pes);
 
+
     ////////////////////////////
     // placeholder variables //
     //////////////////////////
@@ -122,6 +123,7 @@ fn main() {
     //     let global_max_time = global_max_time.load(Ordering::SeqCst);
     //     println!("Global max time: {}", global_max_time);
 
+
     //////////////////////////////////////
     // create world and ditributed map //
     ////////////////////////////////////
@@ -136,6 +138,7 @@ fn main() {
         tent: 2.5,
     };
 
+
     ////////////////////////////////////////////////////////////
     // set up nodes and pe's, set tent distances to infinity //
     //////////////////////////////////////////////////////////
@@ -146,10 +149,11 @@ fn main() {
         distributed_map.visit(i, inf);
     };
 
+
     ////////////////////////////////////////
     // add the sets to the bucket vector //
     //////////////////////////////////////
-    
+
     for i in 0..num_buckets {
         let new_bucket = DistHashSet::new(&world, num_pes);
         new_bucket.add_set(i as i32);
@@ -176,7 +180,6 @@ fn main() {
     ///////////////////////////////////
     // duplicate the current bucket //
     /////////////////////////////////
-    
 
     let heavy_bucket = DistHashSet::new(&world, num_pes);
     world.block_on(async {
@@ -189,7 +192,7 @@ fn main() {
     //////////////////////////
     // process the buckets //
     ////////////////////////
-    
+
     while idx < num_buckets {
         world.block_on(async {
             for i in buckets[idx].data.read().await.iter() {
@@ -216,23 +219,33 @@ fn main() {
     });
     
         
-    ///////////////////////////////
-    // process the heavy bucket //
-    /////////////////////////////
+        ///////////////////////////////
+        // process the heavy bucket //
+        /////////////////////////////
 
-        for i in heavy_bucket.data.iter() {
+        world.block_on(async {
+        for i in heavy_bucket.data.read().await.iter() {
             let map_clone = distributed_map.clone();
-            let adj_list = map_clone.get(i).await.expect("Expected value not found");
+            if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
             // iterates through each edge in adj_list
-            for (edge, weight) in adj_list.edges {
-                if edge > delta {
-                    let potential_tent = adj_list.tent + weight;
-                    let new_idx = distributed_map.relax_requests(&i, potential_tent, delta);
-                    buckets[new_idx as usize].add_set(i);
-                    heavy_bucket.erase_set_item(i);
+            for (edge, weight) in adj_list_result.edges {
+                if edge as usize > delta as usize {
+                    let potential_tent = adj_list_result.tent + weight as f32;
+                    if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
+                        buckets[new_idx as usize].add_set(*i);
+                        if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
+                            // check to see if get tent matches potential tent, if so, erase.
+                            if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, potential_tent).await {
+                                heavy_bucket.erase_set_item(*i);
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+});
+
 
         world.barrier();
         // done with this bucket
@@ -242,7 +255,6 @@ fn main() {
     /////////////////////////
     // empty heavy bucket //
     ///////////////////////
-     
     
     heavy_bucket.empty_set();
 
