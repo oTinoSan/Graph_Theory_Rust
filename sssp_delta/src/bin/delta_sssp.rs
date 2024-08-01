@@ -31,22 +31,19 @@ fn main() {
     }
 
     let world = lamellar::LamellarWorldBuilder::new().build();
-    let my_pe = world.my_pe();
-    let num_pes = world.num_pes();
     world.barrier();
 
     let buckets: Vec<DistHashSet> = Vec::new();
-    let distributed_map = DistHashMap::new(&world, num_pes);
 
 
     ////////////////////////////
     // placeholder variables //
     //////////////////////////
     
-    let mut num_buckets: usize = 0;
+    let num_buckets: usize;
     let mut delta: f32 = 3.0;
-    let mut max_weight: f32 = 0.0;
-    let max_degree: f32;
+    // let mut max_weight: f32 = 0.0;
+    // let max_degree: f32;
     let inf = f32::INFINITY;
 
     if args.len() >= 3 {
@@ -54,18 +51,18 @@ fn main() {
         // delta = args[2].parse().expect("Error parsing delta"); // 3 for testing
         // here is the lookup map for vertices and their best tent values adj list (as a struct)
         //getGraph(world, map, max_weight, path);
-        let rmat_scale: i32 = args[1].parse().expect("Error parsing rmat_scale");
+        // let rmat_scale: i32 = args[1].parse().expect("Error parsing rmat_scale");
     } else {
         println!("Please run the program with at least 3 arguments.");
     }
    
     // start timing
-    let beg = Instant::now();
+    // let beg = Instant::now();
     // placeholder for rmat generation
     // generate_rmat_graph(&world, &mut map, rmat_scale, &mut max_weight);
     // end timing
-    let end = Instant::now();
-    let duration = end.duration_since(beg);
+    // let end = Instant::now();
+    // let duration = end.duration_since(beg);
 
 
     if args.len() == 2 {
@@ -129,7 +126,7 @@ fn main() {
     ////////////////////////////////////
     
     let world = lamellar::LamellarWorldBuilder::new().build();
-    let my_pe = world.my_pe();
+    // let my_pe = world.my_pe();
     let num_pes = world.num_pes();
     world.barrier();
     let distributed_map = DistHashMap::new(&world, num_pes);
@@ -143,25 +140,33 @@ fn main() {
     // set up nodes and pe's, set tent distances to infinity //
     //////////////////////////////////////////////////////////
     
-    for i in 0..10 {
-        let _ = distributed_map.add(i, adj_list.clone());
-        //set tentative distances to infinity
-        distributed_map.visit(i, inf);
-    };
+    world.wait_all();
+    world.barrier();
+    let map_clone = distributed_map.clone();
+    world.block_on(async move {
+        for i in 0..10 {
+            let _ = map_clone.add(i, adj_list.clone());
+            //set tentative distances to infinity
+            map_clone.visit(i, inf).await;
+        }
+    });
 
 
     ////////////////////////////////////////
     // add the sets to the bucket vector //
     //////////////////////////////////////
-
-    for i in 0..num_buckets {
-        let new_bucket = DistHashSet::new(&world, num_pes);
-        new_bucket.add_set(i as i32);
-    }
+    world.wait_all();
+    world.barrier();
+    let new_bucket = DistHashSet::new(&world, num_pes);
+    world.block_on(async move {
+        for i in 0..num_buckets {
+            let _ = new_bucket.add_set(i as i32);
+        }
+    });
     
     // start timing  buckets.emplace_back(world);
-    let beg = Instant::now();
-    let idx: usize = 0;
+    // let beg = Instant::now();
+    let mut idx: usize = 0;
 
 
     ///////////////////////
@@ -169,12 +174,10 @@ fn main() {
     /////////////////////
 
     world.block_on(async {
-        // your code here
         distributed_map.visit(0, 0.0).await;
-        // your code here
+        let _ = buckets[0].add_set(0);
     });
     
-    buckets[0].add_set(0);
     
 
     ///////////////////////////////////
@@ -184,7 +187,7 @@ fn main() {
     let heavy_bucket = DistHashSet::new(&world, num_pes);
     world.block_on(async {
         for i in buckets[idx].data.read().await.iter() {
-            heavy_bucket.add_set(*i);
+            let _ = heavy_bucket.add_set(*i);
         }
     });
 
@@ -196,7 +199,7 @@ fn main() {
     while idx < num_buckets {
         world.block_on(async {
             for i in buckets[idx].data.read().await.iter() {
-                heavy_bucket.add_set(*i);
+                let _ = heavy_bucket.add_set(*i);
                 let map_clone = distributed_map.clone();
                 // iterates through each edge in adj_list  
                 if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
@@ -204,11 +207,12 @@ fn main() {
                     if edge as usize <= delta as usize {
                         let potential_tent = adj_list_result.tent + weight as f32;
                         if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
-                            buckets[new_idx as usize].add_set(*i);
+                            let _ = buckets[new_idx as usize].add_set(*i);
                             if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
                             // check to see if get tent matches potential tent, if so, erase.
-                                if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, potential_tent).await {
-                                    buckets[*i as usize].erase_set_item(*i);
+                                let tent_to_compare = current_adj_list.tent;
+                                if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, tent_to_compare).await {
+                                    let _ = buckets[*i as usize].erase_set_item(*i);
                                 }
                             }
                         }
@@ -232,11 +236,12 @@ fn main() {
                 if edge as usize > delta as usize {
                     let potential_tent = adj_list_result.tent + weight as f32;
                     if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
-                        buckets[new_idx as usize].add_set(*i);
+                        let _ = buckets[new_idx as usize].add_set(*i);
                         if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
+                            let tent_to_compare = current_adj_list.tent;
                             // check to see if get tent matches potential tent, if so, erase.
-                            if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, potential_tent).await {
-                                heavy_bucket.erase_set_item(*i);
+                            if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, tent_to_compare).await {
+                                let _ = buckets[*i as usize].erase_set_item(*i);
                             }
                         }
                     }
@@ -256,36 +261,38 @@ fn main() {
     // empty heavy bucket //
     ///////////////////////
     
-    heavy_bucket.empty_set();
+    world.block_on(async {
+        heavy_bucket.empty_set().await;
+    });
 
     }
         
-    // end timing
-    let end = Instant::now();
+    // // end timing
+    // let end = Instant::now();
 
-    // compute total elapsed time
-    let duration = end.duration_since(beg);
-    let time = duration.as_micros();
-    let global_time = world.all_reduce_max(time);
+    // // compute total elapsed time
+    // let duration = end.duration_since(beg);
+    // let time = duration.as_micros();
+    // let global_time = world.all_reduce_max(time);
     
-    let num_edges: u64 = 0;
+    // let num_edges: u64 = 0;
 
 
-    for (key, adj_matrix) in distributed_map.iter() {
-        num_edges += vertex.edges.len(); 
-    }
+    // for (key, adj_matrix) in distributed_map.iter() {
+    //     num_edges += vertex.edges.len(); 
+    // }
     
-    let global_num_edges = world.all_reduce_sum(num_edges);
+    // let global_num_edges = world.all_reduce_sum(num_edges);
 
-    if world_rank() == 0 {
-        println!("{}", global_time as f64 / 1000.0);
-        println!("{}", global_num_edges);
-    }
+    // if world_rank() == 0 {
+    //     println!("{}", global_time as f64 / 1000.0);
+    //     println!("{}", global_num_edges);
+    // }
 
-    // print out final distances from source for each node
-    for (node, adj_matrix) in distributed_map.iter() {
-    println!("{}, {}", node, adj_matrix.tent);
-    }
+    // // print out final distances from source for each node
+    // for (node, adj_matrix) in distributed_map.iter() {
+    // println!("{}, {}", node, adj_matrix.tent);
+    // }
 
 }
 
