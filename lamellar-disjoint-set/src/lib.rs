@@ -96,6 +96,8 @@ impl DisjointSet {
         self.team.barrier();
         self.process_local_edges();
         self.team.barrier();
+        self.nonlocal_spanning_tree();
+        self.team.barrier();
         self.process_nonlocal_edges();
         self.team.barrier();
     }
@@ -305,13 +307,13 @@ impl LamellarAm for FindUnionAM {
                 // if a is a global root, and of lower rank than b, then b becomes the parent of a
                 let new_a = Vertex {parent: b.value, .. a};
                 if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, a.value)).compare_exchange(a, new_a).is_ok() {
-                    break
+                    break;
                 }
             } else if b.parent == b.value && b.rank < a.rank && get_vertex_pe(&self.vertices, b.value) == lamellar::current_pe {
                 // inverse of above, if b is a global root and of lower rank than a, a becomes the parent of b
                 let new_b = Vertex {parent: a.value, .. b};
                 if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, b.value)).compare_exchange(b, new_b).is_ok() {
-                    break
+                    break;
                 }
             } else if a.parent == a.value && b.parent == b.value && get_vertex_pe(&self.vertices, a.value) == lamellar::current_pe {
                 // if both a and b are global roots, and of the same rank, and a is local to the calling pe, check which of a and b has a lower value
@@ -372,6 +374,36 @@ impl LamellarAM for IncreaseRankAM {
         }
         if v.parent != v.value {
             let _ = self.vertices.team().exec_am_pe(get_vertex_pe(&self.vertices, v.parent), IncreaseRankAM {vertices: self.vertices.clone(), v: self.vertices.at(v.parent as usize).await});
+        }
+    }
+}
+
+/// Active message used for path compression
+#[AmData(Clone, Debug)]
+pub struct PathCompressionAM {
+    root: Vertex,
+    target: Vertex,
+    vertices: AtomicArray<Vertex>,
+}
+
+#[am]
+impl LamellarAM for PathCompressionAM {
+    async fn exec(self) {
+        let mut target;
+        loop {
+            // find the local root of the target vertex
+            target = find_local_root(&self.vertices, self.target).await;
+            // if it is still valid for the local root to point to the new root, make that change
+            if target.rank < self.root.rank {
+                let updated = Vertex {parent: self.root.value, .. target};
+                if self.vertices.mut_local_data().at(get_vertex_local_index(&self.vertices, target.value)).compare_exchange(target, updated).is_ok() {
+                    break;
+                }
+            }
+        }
+        // if we have not reached a global root, continue to the next PE
+        if target.parent != target.value {
+            let _ = self.vertices.team().exec_am_pe(get_vertex_pe(&self.vertices, target.parent), PathCompressionAM {root: self.root, target, vertices: self.vertices.clone()});
         }
     }
 }
