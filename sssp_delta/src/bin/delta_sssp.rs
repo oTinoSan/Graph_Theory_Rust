@@ -24,101 +24,123 @@ fn generate_rmat_graph(
 */
 
 fn main() {
+    ///////////////////////////////////////////////
+    // collect arguments, set up world, buckets //
+    /////////////////////////////////////////////
+     
+    
     let args: Vec<String> = env::args().collect();
-
-    for (index, arg) in args.iter().enumerate() {
-        println!("Argument {}: {}", index, arg);
-    }
-
     let world = lamellar::LamellarWorldBuilder::new().build();
     world.barrier();
-
+    let num_pes = 10; 
     let buckets: Vec<DistHashSet> = Vec::new();
+    let map = DistHashMap::new(&world, num_pes);
 
 
     ////////////////////////////
     // placeholder variables //
     //////////////////////////
     
-    let num_buckets: usize;
+    let mut num_buckets: usize = 0;
     let mut delta: f32 = 3.0;
-    // let mut max_weight: f32 = 0.0;
-    // let max_degree: f32;
+    let mut max_weight: f32 = 0.0;
+    let max_degree: f32;
     let inf = f32::INFINITY;
 
-    if args.len() >= 3 {
-        // num_buckets = args[1].parse().expect("Error parsing num_buckets");
-        // delta = args[2].parse().expect("Error parsing delta"); // 3 for testing
+
+    //////////////////////
+    // read arguments  //
+    ////////////////////
+
+    if args.len() > 1 {
+
+        //  num_buckets = args[2].parse::<usize>().unwrap(); // = ceil(max_cost / delta) + 2; -> 9 for testing
+        // delta = args[2].parse::<f32>().unwrap(); // -> 3 for testing
+        // let path = args[1].clone();        
+        let rmat_scale: i32 = args[1].parse().expect("Error parsing rmat_scale");
         // here is the lookup map for vertices and their best tent values adj list (as a struct)
         //getGraph(world, map, max_weight, path);
-        // let rmat_scale: i32 = args[1].parse().expect("Error parsing rmat_scale");
+
+        ////////////////////////////
+        // time_rmat_generation  //
+        //////////////////////////
+
+        // start timing
+        let beg = Instant::now();
+        // placeholder for rmat generation
+        //generate_rmat_graph(&world, &mut map, rmat_scale, &mut max_weight);
+        // end timing
+        let end = Instant::now();
+        let degree = 0;
+
+
+    ///////////////////////
+    // find_map_degree  //
+    /////////////////////
+    
+    world.wait_all();
+    world.barrier();
+    let num_pes = args[2].parse().expect("Error parsing number of pes");
+
+        let distributed_map = DistHashMap::new(&world, num_pes);
+
+        let map_clone = distributed_map.clone();
+        world.block_on(async move {
+            for i in 0..num_pes {
+                if let DistCmdResult::Get(adj_list) = map_clone.get(i as i32).await {
+                let degree = adj_list.edges.len();
+                }
+            }
+        });
+
+    if args.len() > 2 {
+       let max_degree = world.all_reduce_max(degree);
+        let delta = 1.0/max_degree;
+        num_buckets = ((max_weight/delta).ceil() + 1.0) as usize;
     } else {
-        println!("Please run the program with at least 3 arguments.");
-    }
-   
-    // start timing
-    // let beg = Instant::now();
-    // placeholder for rmat generation
-    // generate_rmat_graph(&world, &mut map, rmat_scale, &mut max_weight);
-    // end timing
-    // let end = Instant::now();
-    // let duration = end.duration_since(beg);
-
-
-    if args.len() == 2 {
-        num_buckets = args[2].parse::<usize>().unwrap();
-    } else {
-        num_buckets = args[2].parse::<usize>().unwrap();
-        delta = args[3].parse::<f32>().unwrap();
+        num_buckets = args[2].parse().expect("Error parsing number of buckets");
+        let delta = args[3].parse().expect("Error parsing delta input");
     }
 
-    ///////////////////////////
-    // compute elapsed time //
-    /////////////////////////
+    //////////////////////////////////
+    // compute_total_elapsed_time  //
+    ////////////////////////////////
 
-    // use std::sync::atomic::{AtomicU64, Ordering};
-    // use std::sync::Arc;
-    // use std::thread;
-    // use std::time::{Duration, Instant};
+    let duration = end.duration_since(beg);
+    let time = duration.as_secs();
+    let global_time = world.all_reduce_max(time);
+
+
+    ////////////////////////////////////
+    // generate rmat graph and time  //
+    //////////////////////////////////
     
-    //     let beg = Instant::now();
-    //     // Simulate some work
-    //     thread::sleep(Duration::from_millis(100));
-    //     let end = Instant::now();
-    
-    //     let duration = end.duration_since(beg);
-    //     let time = duration.as_micros() as u64;
-    
-    //     // Shared atomic variable to store the global maximum time
-    //     let global_max_time = Arc::new(AtomicU64::new(0));
-    
-    //     // Number of threads to simulate
-    //     let num_threads = 4;
-    //     let mut handles = vec![];
-    
-    //     for _ in 0..num_threads {
-    //         let global_max_time = Arc::clone(&global_max_time);
-    //         let time = time;
-    
-    //         let handle = thread::spawn(move || {
-    //             // Simulate some work
-    //             thread::sleep(Duration::from_millis(50));
-    
-    //             // Update the global maximum time
-    //             global_max_time.fetch_max(time, Ordering::SeqCst);
-    //         });
-    
-    //         handles.push(handle);
-    //     }
-    
-    //     // Wait for all threads to finish
-    //     for handle in handles {
-    //         handle.join().unwrap();
-    //     }
-    
-    //     // Get the global maximum time
-    //     let global_max_time = global_max_time.load(Ordering::SeqCst);
-    //     println!("Global max time: {}", global_max_time);
+    world.block_on(async move {
+        if world_rank == 0 {
+            println!("{}", num_buckets);
+            println!("{}", global_time / 1000.0);
+        }
+         else {
+            let path = "";
+            let degree = 0;
+
+            let beg = Instant::now();
+            generate_rmat_graph(world, map, 8, max_weight);
+            let end = Instant::now();
+            world.block_on(async move {
+                for i in 0..num_pes {
+                    if let DistCmdResult::Get(adj_list) = map_clone.get(i as i32).await {
+                    let degree = adj_list.edges.len();
+                    }
+                }
+            });
+            let max_degree = world.all_reduce_max(degree);
+            let delta = 1.0/max_degree;
+            num_buckets = ((max_weight/delta).ceil() + 1.0) as usize;
+        }
+    });
+    }
+
 
 
     //////////////////////////////////////
@@ -179,7 +201,6 @@ fn main() {
     });
     
     
-
     ///////////////////////////////////
     // duplicate the current bucket //
     /////////////////////////////////
@@ -203,13 +224,43 @@ fn main() {
                 let map_clone = distributed_map.clone();
                 // iterates through each edge in adj_list  
                 if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
+                    for (edge, weight) in adj_list_result.edges {
+                        if edge as usize <= delta as usize {
+                            let potential_tent = adj_list_result.tent + weight as f32;
+                            if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
+                                let _ = buckets[new_idx as usize].add_set(*i);
+                                if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
+                                // check to see if get tent matches potential tent, if so, erase.
+                                    let tent_to_compare = current_adj_list.tent;
+                                    if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, tent_to_compare).await {
+                                        let _ = buckets[*i as usize].erase_set_item(*i);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    
+        ///////////////////////////////
+        // process the heavy bucket //
+        /////////////////////////////
+
+        world.block_on(async {
+            for i in heavy_bucket.data.read().await.iter() {
+                let map_clone = distributed_map.clone();
+                if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
+                // iterates through each edge in adj_list
                 for (edge, weight) in adj_list_result.edges {
-                    if edge as usize <= delta as usize {
+                    if edge as usize > delta as usize {
                         let potential_tent = adj_list_result.tent + weight as f32;
                         if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
                             let _ = buckets[new_idx as usize].add_set(*i);
                             if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
-                            // check to see if get tent matches potential tent, if so, erase.
+                                // check to see if get tent matches potential tent, if so, erase.
                                 let tent_to_compare = current_adj_list.tent;
                                 if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, tent_to_compare).await {
                                     let _ = buckets[*i as usize].erase_set_item(*i);
@@ -222,77 +273,44 @@ fn main() {
         }
     });
     
+    
+            world.barrier();
+            // done with this bucket
+            idx += 1;
+    
+    
+        ///////////////////////////////////////
+        // empty heavy bucket, print result //
+        /////////////////////////////////////
         
-        ///////////////////////////////
-        // process the heavy bucket //
-        /////////////////////////////
-
         world.block_on(async {
-        for i in heavy_bucket.data.read().await.iter() {
-            let map_clone = distributed_map.clone();
-            if let DistCmdResult::Get(adj_list_result) = map_clone.get(*i).await {
-            // iterates through each edge in adj_list
-            for (edge, weight) in adj_list_result.edges {
-                if edge as usize > delta as usize {
-                    let potential_tent = adj_list_result.tent + weight as f32;
-                    if let DistCmdResult::Relax(new_idx) = distributed_map.relax_requests(*i, potential_tent, delta).await {
-                        let _ = buckets[new_idx as usize].add_set(*i);
-                        if let DistCmdResult::Get(current_adj_list) = distributed_map.get(*i).await {
-                            let tent_to_compare = current_adj_list.tent;
-                            // check to see if get tent matches potential tent, if so, erase.
-                            if let DistCmdResult::Compare(true) = distributed_map.compare_tent(*i, tent_to_compare).await {
-                                let _ = buckets[*i as usize].erase_set_item(*i);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-});
-
-
-        world.barrier();
-        // done with this bucket
-        idx += 1;
-
-
-    /////////////////////////
-    // empty heavy bucket //
-    ///////////////////////
+            heavy_bucket.empty_set().await;
+        });
     
-    world.block_on(async {
-        heavy_bucket.empty_set().await;
-    });
 
-    }
+        let end = Instant::now();
+        let duration = end.duration_since(beg);
+        let time = duration.as_secs();
+        let global_time = world.all_reduce_max(time);
+
+        let num_edges = 0;
+    
         
-    // // end timing
-    // let end = Instant::now();
-
-    // // compute total elapsed time
-    // let duration = end.duration_since(beg);
-    // let time = duration.as_micros();
-    // let global_time = world.all_reduce_max(time);
+        for (key, adj_matrix) in distributed_map.iter() {
+            num_edges += vertex.edges.len(); 
+        }
+        
+        let global_num_edges = world.all_reduce_sum(num_edges);
     
-    // let num_edges: u64 = 0;
-
-
-    // for (key, adj_matrix) in distributed_map.iter() {
-    //     num_edges += vertex.edges.len(); 
-    // }
+        if world_rank() == 0 {
+             println!("{}", global_time as f64 / 1000.0);
+             println!("{}", global_num_edges);
+        }
     
-    // let global_num_edges = world.all_reduce_sum(num_edges);
-
-    // if world_rank() == 0 {
-    //     println!("{}", global_time as f64 / 1000.0);
-    //     println!("{}", global_num_edges);
-    // }
-
-    // // print out final distances from source for each node
-    // for (node, adj_matrix) in distributed_map.iter() {
-    // println!("{}, {}", node, adj_matrix.tent);
-    // }
-
+        // // print out final distances from source for each node
+        // for (node, adj_matrix) in distributed_map.iter() {
+        // println!("{}, {}", node, adj_matrix.tent);
+        // }
+    
 }
 
