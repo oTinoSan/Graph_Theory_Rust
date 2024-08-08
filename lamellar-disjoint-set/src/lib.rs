@@ -388,6 +388,7 @@ pub struct PathCompressionAM {
 
 #[am]
 impl LamellarAM for PathCompressionAM {
+    // this function assumes it is being executed on the PE owning the parent of target
     async fn exec(self) {
         let mut target;
         loop {
