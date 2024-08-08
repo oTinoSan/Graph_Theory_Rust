@@ -97,6 +97,17 @@ impl DistHashMap {
             },
         )
     }  
+
+    pub fn all_reduce_max(&self, k: i32, v: Vec<i32>) -> impl Future<Output = DistCmdResult> {
+        let dest_pe = self.get_key_pe(k);
+        self.team.exec_am_pe(
+            dest_pe,
+            DistHashMapOp {
+                data: self.data.clone(),
+                cmd: DistCmd::ReduceMax(k, v)
+            },
+        )
+    }
 }
 
     
@@ -111,6 +122,7 @@ enum DistCmd {
     Visit(i32, f32),
     Relax(i32, f32, f32),
     Compare(i32, f32),
+    ReduceMax(i32, Vec<i32>)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,6 +132,7 @@ pub enum DistCmdResult {
     Visit,
     Relax(i32),
     Compare(bool),
+    ReduceMax(usize)
 }
 
 #[AmData(Debug, Clone)]
@@ -168,6 +181,13 @@ impl LamellarAM for DistHashMapOp {
                 } else {
                     DistCmdResult::Compare(false)
                 }
+            }
+
+            DistCmd::ReduceMax(k, degree_vec) => {
+                let data = self.data.read().await;
+                let v = data.get(&k).cloned().unwrap();
+                let degree = v.edges.len();
+                DistCmdResult::ReduceMax(degree)
             }
         }
     }

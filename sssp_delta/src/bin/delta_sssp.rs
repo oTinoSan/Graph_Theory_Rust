@@ -94,7 +94,7 @@ fn main() {
         });
 
     if args.len() > 2 {
-       let max_degree = world.all_reduce_max(degree);
+        let max_degree = world.all_reduce_max(degree);
         let delta = 1.0/max_degree;
         num_buckets = ((max_weight/delta).ceil() + 1.0) as usize;
     } else {
@@ -166,10 +166,10 @@ fn main() {
     world.barrier();
     let map_clone = distributed_map.clone();
     world.block_on(async move {
-        for i in 0..10 {
-            let _ = map_clone.add(i, adj_list.clone());
+        for i in 0..num_pes {
+            let _ = map_clone.add(i as i32, adj_list.clone());
             //set tentative distances to infinity
-            map_clone.visit(i, inf).await;
+            map_clone.visit(i as i32, inf).await;
         }
     });
 
